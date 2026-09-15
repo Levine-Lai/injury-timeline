@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="英超球员伤病状态、预计复出周期与历史相似案例可视化。" />
+  <title>伤停线｜英超伤病情报</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23081425'/%3E%3Cpath d='M13 34h10l5-13 8 25 6-12h9' fill='none' stroke='%23f4d35e' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="伤停线首页">
+      <span class="brand-mark" aria-hidden="true">ST</span>
+      <span>伤停线 <small>Injury Intelligence</small></span>
+    </a>
+    <nav aria-label="主导航">
+      <button class="nav-link active" data-view="overview">总览</button>
+      <button class="nav-link" data-view="teams">球队</button>
+      <button class="nav-link" data-view="timeline">时间线</button>
+      <button class="nav-link" data-view="method">数据说明</button>
+    </nav>
+    <div class="freshness"><i></i> API-Football · 演示</div>
+  </header>
+
+  <main id="top">
+    <section class="intro" aria-labelledby="page-title">
+      <div>
+        <h1 id="page-title">英超伤病情报台</h1>
+      </div>
+      <div class="search-wrap">
+        <label for="global-search">搜索球队或球员</label>
+        <div class="search-box">
+          <span aria-hidden="true">⌕</span>
+          <input id="global-search" type="search" placeholder="例如：Arsenal、Saka、腿筋" autocomplete="off" />
+          <kbd>/</kbd>
+        </div>
+        <div id="search-results" class="search-results" role="listbox" aria-label="搜索结果"></div>
+      </div>
+    </section>
+
+    <section class="league-strip" aria-label="联赛伤病概览">
+      <article><span>当前伤停</span><strong id="stat-current">47</strong><small>20 支球队</small></article>
+      <article><span>本周新增</span><strong class="accent" id="stat-new">8</strong><small>较上周 −3</small></article>
+      <article><span>预计 14 天内复出</span><strong id="stat-return">19</strong><small>占当前伤停 40%</small></article>
+      <article><span>平均缺阵</span><strong>23<em>天</em></strong><small>过去 3 个赛季</small></article>
+    </section>
+
+    <section class="workspace" data-panel="overview">
+      <div class="section-heading">
+        <div><h2>最新伤病动态</h2></div>
+        <div class="filter-row" role="group" aria-label="伤情筛选">
+          <button class="filter active" data-filter="all">全部</button>
+          <button class="filter" data-filter="new">新伤</button>
+          <button class="filter" data-filter="returning">接近复出</button>
+          <button class="filter" data-filter="serious">长期伤停</button>
+        </div>
+      </div>
+      <div class="dashboard-grid">
+        <div class="injury-list" id="injury-list" aria-live="polite"></div>
+        <aside class="team-pressure">
+          <div class="aside-title"><h3>球队伤停压力</h3></div>
+          <div id="pressure-chart" class="pressure-chart"></div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="workspace hidden" data-panel="teams">
+      <div class="section-heading"><div><h2>球队状态</h2></div></div>
+      <div class="team-grid" id="team-grid"></div>
+    </section>
+
+    <section class="workspace hidden" data-panel="timeline">
+      <div class="section-heading"><div><h2>伤病时间线</h2></div></div>
+      <div class="timeline" id="timeline-list"></div>
+    </section>
+
+    <section class="workspace hidden" data-panel="method">
+      <div class="section-heading"><div><h2>数据与预测</h2></div></div>
+      <div class="method-grid">
+        <article><span>01</span><h3>数据采集</h3><p>API、俱乐部公告、赛前发布会</p></article>
+        <article><span>02</span><h3>更新识别</h3><p>定时快照与字段差异检测</p></article>
+        <article><span>03</span><h3>相似案例</h3><p>伤病、年龄、位置、复发记录</p></article>
+        <article><span>04</span><h3>结果校验</h3><p>来源、置信度与冲突消息复核</p></article>
+      </div>
+      <div class="disclaimer"><strong>重要：</strong> “预计复出”是基于公开报道与历史样本的统计估计，不是医学诊断，也不代表俱乐部官方结论。</div>
+    </section>
+  </main>
+
+  <footer><span>伤停线 · 概念验证版</span><span>所有页面数据均为产品演示，不代表实时球员状态</span></footer>
+  <script src="./config.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
+

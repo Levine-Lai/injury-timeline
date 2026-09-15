@@ -1,0 +1,42 @@
+let players = [
+  {id:1,name:'Bukayo Saka',initials:'BS',team:'Arsenal',club:'#d51f35',position:'右边锋',injury:'腿筋拉伤',area:'大腿后侧',severity:'medium',status:'new',return:'9月28日—10月5日',days:'14–21 天',confidence:'72%',reported:'今天 09:40',note:'训练中感到不适，等待进一步评估',history:'2024 · 同部位 18 天',cases:[['Mohamed Salah','17 天 · 84% 相似'],['Phil Foden','21 天 · 79% 相似'],['Jarrod Bowen','15 天 · 73% 相似']]},
+  {id:2,name:'Cole Palmer',initials:'CP',team:'Chelsea',club:'#1450a3',position:'前腰',injury:'腹股沟不适',area:'内收肌群',severity:'low',status:'returning',return:'本周末待定',days:'3–7 天',confidence:'64%',reported:'今天 08:15',note:'已恢复部分合练，赛前评估',history:'无公开同部位记录',cases:[['James Maddison','6 天 · 77% 相似'],['Martin Ødegaard','4 天 · 71% 相似'],['Bruno Fernandes','0 天 · 66% 相似']]},
+  {id:3,name:'Alexander Isak',initials:'AI',team:'Liverpool',club:'#e5484d',position:'中锋',injury:'脚踝扭伤',area:'右脚踝',severity:'high',status:'serious',return:'10月19日—11月2日',days:'28–42 天',confidence:'81%',reported:'昨天 21:10',note:'比赛中受伤离场，预计缺席多轮',history:'2023 · 脚踝 32 天',cases:[['Darwin Núñez','29 天 · 88% 相似'],['Gabriel Jesus','35 天 · 82% 相似'],['Ollie Watkins','24 天 · 75% 相似']]},
+  {id:4,name:'Rodri',initials:'RO',team:'Manchester City',club:'#6cabdd',position:'后腰',injury:'膝部恢复',area:'右膝',severity:'medium',status:'returning',return:'10月5日—10月12日',days:'18–25 天',confidence:'69%',reported:'昨天 17:35',note:'个人训练阶段，复出后预计限制时间',history:'2025 · 膝部 41 天',cases:[['Declan Rice','20 天 · 76% 相似'],['Thomas Partey','26 天 · 70% 相似'],['Casemiro','18 天 · 65% 相似']]},
+  {id:5,name:'Cristian Romero',initials:'CR',team:'Tottenham',club:'#2979e2',position:'中后卫',injury:'小腿拉伤',area:'左小腿',severity:'medium',status:'new',return:'10月3日—10月10日',days:'18–26 天',confidence:'76%',reported:'昨天 13:20',note:'国家队比赛后报告肌肉紧张',history:'2024 · 小腿 22 天',cases:[['Lisandro Martínez','23 天 · 85% 相似'],['John Stones','19 天 · 78% 相似'],['Rúben Dias','27 天 · 74% 相似']]},
+  {id:6,name:'Bruno Guimarães',initials:'BG',team:'Newcastle',club:'#2ca572',position:'中场',injury:'撞击伤',area:'左足',severity:'low',status:'returning',return:'9月21日',days:'2–5 天',confidence:'88%',reported:'9月14日 18:05',note:'影像检查无结构性损伤',history:'2024 · 足部 5 天',cases:[['Joelinton','4 天 · 90% 相似'],['Douglas Luiz','6 天 · 82% 相似'],['Moisés Caicedo','3 天 · 80% 相似']]}
+];
+const teamStats=[['Liverpool',6,92,'#e5484d'],['Tottenham',5,78,'#2979e2'],['Arsenal',4,65,'#df4a50'],['Man City',4,57,'#45a1e8'],['Chelsea',3,43,'#246fd3'],['Newcastle',2,28,'#2ca572'],['Aston Villa',2,24,'#dc5960'],['Man United',1,18,'#e5484d']];
+const list=document.querySelector('#injury-list');
+function severityLabel(v){return v==='high'?'长期':v==='medium'?'中等':'轻微'}
+function renderList(filter='all',team=''){const filtered=players.filter(p=>(filter==='all'||p.status===filter)&&(!team||p.team===team));list.innerHTML=filtered.length?filtered.map(p=>`<button class="injury-row" data-id="${p.id}"><span class="avatar" style="--club:${p.club}">${p.initials}</span><span class="player"><strong>${p.name}</strong><small>${p.team} · ${p.position}</small></span><span class="injury-type"><strong>${p.injury}</strong><small>${p.area} · ${p.reported}</small></span><span class="return-date"><small>预计复出</small><strong>${p.return}</strong></span><span class="severity ${p.severity}">${severityLabel(p.severity)}</span><span class="row-arrow">›</span></button>`).join(''):`<div style="padding:40px;text-align:center;color:#687386">当前筛选下暂无伤病记录</div>`}
+function openPlayer(id){const selected=players.find(x=>String(x.id)===String(id));if(selected)sessionStorage.setItem('injury-player',JSON.stringify(selected));window.location.href=`./player.html?id=${encodeURIComponent(id)}`}
+function renderPressure(){document.querySelector('#pressure-chart').innerHTML=teamStats.slice(0,6).map(([name,count,score,color])=>`<div class="pressure-item"><span>${name} · ${count}人</span><div class="bar-track"><div class="bar" style="--w:${score}%;--club:${color}"></div></div><b>${score}</b></div>`).join('')}
+function renderTeams(){document.querySelector('#team-grid').innerHTML=teamStats.map(([name,count,score,color])=>`<button class="team-card" data-team="${name==='Man City'?'Manchester City':name}"><span class="team-badge" style="--club:${color}">${name.split(/\s/).map(x=>x[0]).join('').slice(0,3)}</span><strong>${name}</strong><p>${count} 人伤停 · 压力指数 ${score}</p><div class="meter"><i style="--club:${color};--pressure:${score}%"></i></div><footer><span>当前状态</span><span>${score>70?'高风险':score>35?'需关注':'稳定'}</span></footer></button>`).join('')}
+function renderTimeline(){document.querySelector('#timeline-list').innerHTML=players.map(p=>`<button class="timeline-item" data-id="${p.id}" style="width:100%;border-left:0;border-right:0;border-top:0;background:transparent;text-align:left"><span class="timeline-time">${p.reported}</span><i class="timeline-dot"></i><span class="timeline-copy"><strong>${p.name} · ${p.injury}</strong><span>${p.team}｜${p.note}</span></span><span class="severity ${p.severity}">${severityLabel(p.severity)}</span></button>`).join('')}
+function switchView(view){document.querySelectorAll('[data-panel]').forEach(x=>x.classList.toggle('hidden',x.dataset.panel!==view));document.querySelectorAll('.nav-link').forEach(x=>x.classList.toggle('active',x.dataset.view===view));window.scrollTo({top:0,behavior:'smooth'})}
+document.addEventListener('click',e=>{const row=e.target.closest('[data-id]');if(row)openPlayer(row.dataset.id);const nav=e.target.closest('[data-view]');if(nav)switchView(nav.dataset.view);const filter=e.target.closest('[data-filter]');if(filter){document.querySelectorAll('.filter').forEach(x=>x.classList.remove('active'));filter.classList.add('active');renderList(filter.dataset.filter)}const team=e.target.closest('[data-team]');if(team){switchView('overview');renderList('all',team.dataset.team)}});
+const search=document.querySelector('#global-search'),results=document.querySelector('#search-results');function updateSearch(){const q=search.value.trim().toLowerCase();if(!q){results.classList.remove('open');return}const matched=players.filter(p=>[p.name,p.team,p.injury,p.area].join(' ').toLowerCase().includes(q));results.innerHTML=matched.length?matched.map(p=>`<button class="search-result" data-id="${p.id}" role="option"><strong>${p.name}</strong><small>${p.team} · ${p.injury}</small></button>`).join(''):`<div style="padding:16px;color:#687386">没有匹配结果</div>`;results.classList.add('open')}
+search.addEventListener('input',updateSearch);search.addEventListener('keydown',e=>{if(e.key==='Escape'){search.value='';results.classList.remove('open')}});document.addEventListener('keydown',e=>{if(e.key==='/'&&document.activeElement!==search){e.preventDefault();search.focus()}});document.addEventListener('click',e=>{if(!e.target.closest('.search-wrap'))results.classList.remove('open')});
+function estimateFromReason(reason=''){
+  const value=reason.toLowerCase();
+  if(/acl|cruciate|fracture|achilles/.test(value))return{severity:'high',days:'60–180 天',return:'长期伤停'};
+  if(/hamstring|muscle|ankle|knee|groin/.test(value))return{severity:'medium',days:'14–35 天',return:'待进一步确认'};
+  return{severity:'low',days:'3–14 天',return:'赛前评估'};
+}
+async function syncApiFootball(){
+  try{
+    const apiBase=(window.INJURY_API_BASE||'.').replace(/\/$/,'');
+    const response=await fetch(`${apiBase}/api/injuries?league=39&season=2026`,{headers:{Accept:'application/json'}});
+    if(!response.ok)return;
+    const payload=await response.json();
+    const rows=Array.isArray(payload)?payload:payload.response;
+    if(!Array.isArray(rows)||!rows.length)return;
+    players=rows.slice(0,60).map(item=>{const estimate=estimateFromReason(item.player?.reason);const name=item.player?.name||'Unknown player';return{id:item.player?.id,name,initials:name.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase(),team:item.team?.name||'Unknown team',club:'#2674d9',position:'球员',injury:item.player?.reason||item.player?.type||'伤病',area:item.player?.type||'Injury',severity:estimate.severity,status:estimate.severity==='high'?'serious':'new',return:estimate.return,days:estimate.days,confidence:'数据待积累',reported:item.fixture?.date?new Date(item.fixture.date).toLocaleDateString('zh-CN'):'最近更新',note:'API-Football 伤病报告',history:'等待 /sidelined 数据',cases:[]}});
+    document.querySelector('#stat-current').textContent=players.length;
+    document.querySelector('.freshness').innerHTML='<i></i> API-Football · 已同步';
+    renderList();renderTimeline();
+  }catch(_error){/* 保留演示数据 */}
+}
+renderList();renderPressure();renderTeams();renderTimeline();syncApiFootball();
+
