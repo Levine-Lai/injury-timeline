@@ -3,93 +3,63 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="英超球员伤病状态、预计复出周期与历史相似案例可视化。" />
-  <title>伤停线｜英超伤病情报</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23081425'/%3E%3Cpath d='M13 34h10l5-13 8 25 6-12h9' fill='none' stroke='%23f4d35e' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="./styles.css" />
+  <meta name="description" content="按球队查看英超球员伤病、预计复出时间与出场概率。" />
+  <title>伤停线｜英超伤病数据</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231769d2'/%3E%3Cpath d='M13 34h10l5-13 8 25 6-12h9' fill='none' stroke='white' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="./styles.css?v=20260916-5" />
 </head>
 <body>
-  <header class="site-header">
-    <a class="brand" href="#top" aria-label="伤停线首页">
+  <header class="site-header injury-header">
+    <a class="brand" href="./index.html" aria-label="伤停线首页">
       <span class="brand-mark" aria-hidden="true">ST</span>
       <span>伤停线 <small>Injury Intelligence</small></span>
     </a>
-    <nav aria-label="主导航">
-      <button class="nav-link active" data-view="overview">总览</button>
-      <button class="nav-link" data-view="teams">球队</button>
-      <button class="nav-link" data-view="timeline">时间线</button>
-      <button class="nav-link" data-view="method">数据说明</button>
-    </nav>
-    <div class="freshness"><i></i> 正在同步数据</div>
+    <div class="freshness"><i></i> 正在更新</div>
   </header>
 
-  <main id="top">
-    <section class="intro" aria-labelledby="page-title">
+  <main id="top" class="injury-home">
+    <section class="injury-toolbar" aria-labelledby="page-title">
       <div>
-        <h1 id="page-title">英超伤病情报台</h1>
+        <h1 id="page-title">英超伤病</h1>
+        <p id="data-summary">正在读取球员状态</p>
       </div>
-      <div class="search-wrap">
-        <label for="global-search">搜索球队或球员</label>
+      <div class="search-wrap compact-search">
+        <label for="global-search">搜索球员或球队</label>
         <div class="search-box">
           <span aria-hidden="true">⌕</span>
-          <input id="global-search" type="search" placeholder="例如：Arsenal、Saka、腿筋" autocomplete="off" />
-          <kbd>/</kbd>
+          <input id="global-search" type="search" placeholder="球员、球队或伤病" autocomplete="off" />
         </div>
         <div id="search-results" class="search-results" role="listbox" aria-label="搜索结果"></div>
       </div>
     </section>
 
-    <section class="league-strip" aria-label="联赛伤病概览">
-      <article><span>近期缺阵球员</span><strong id="stat-current">—</strong><small id="stat-teams">正在加载</small></article>
-      <article><span>最近 7 天新增</span><strong class="accent" id="stat-new">—</strong><small>按最新比赛日期</small></article>
-      <article><span>长期风险</span><strong id="stat-return">—</strong><small>按连续缺阵场次估计</small></article>
-      <article><span>历史样本</span><strong>15,603</strong><small>2020–2025 五大联赛</small></article>
+    <section class="injury-stats" aria-label="伤病概览">
+      <article><span>伤病球员</span><strong id="stat-current">—</strong></article>
+      <article><span>出场存疑</span><strong id="stat-doubtful">—</strong></article>
+      <article><span>有复出日期</span><strong id="stat-return">—</strong></article>
+      <article><span>涉及球队</span><strong id="stat-teams">—</strong></article>
     </section>
 
-    <section class="workspace" data-panel="overview">
-      <div class="section-heading">
-        <div><h2>英超最新缺阵动态</h2></div>
-        <div class="filter-row" role="group" aria-label="伤情筛选">
-          <button class="filter active" data-filter="all">全部</button>
-          <button class="filter" data-filter="new">新伤</button>
-          <button class="filter" data-filter="returning">一般关注</button>
-          <button class="filter" data-filter="serious">长期伤停</button>
-        </div>
+    <section class="team-browser" aria-labelledby="team-filter-title">
+      <div class="section-heading compact-heading">
+        <h2 id="team-filter-title">按球队查看</h2>
+        <strong id="selection-count"></strong>
       </div>
-      <div class="dashboard-grid">
-        <div class="injury-list" id="injury-list" aria-live="polite"></div>
-        <aside class="team-pressure">
-          <div class="aside-title"><h3>球队伤停压力</h3></div>
-          <div id="pressure-chart" class="pressure-chart"></div>
-        </aside>
+      <div class="team-tabs" id="team-tabs" role="tablist" aria-label="球队筛选"></div>
+    </section>
+
+    <section class="injury-board" aria-labelledby="injury-list-title">
+      <div class="injury-board-head">
+        <h2 id="injury-list-title">全部球队</h2>
+        <div class="status-key"><span><i class="key-injured"></i>伤停</span><span><i class="key-doubtful"></i>存疑</span></div>
       </div>
-    </section>
-
-    <section class="workspace hidden" data-panel="teams">
-      <div class="section-heading"><div><h2>球队状态</h2></div></div>
-      <div class="team-grid" id="team-grid"></div>
-    </section>
-
-    <section class="workspace hidden" data-panel="timeline">
-      <div class="section-heading"><div><h2>伤病时间线</h2></div></div>
-      <div class="timeline" id="timeline-list"></div>
-    </section>
-
-    <section class="workspace hidden" data-panel="method">
-      <div class="section-heading"><div><h2>数据与预测</h2></div></div>
-      <div class="method-grid">
-        <article><span>01</span><h3>实时缺阵</h3><p>Big Balls Sports 英超缺阵记录</p></article>
-        <article><span>02</span><h3>更新识别</h3><p>定时快照与字段差异检测</p></article>
-        <article><span>03</span><h3>历史案例</h3><p>15,603 条五大联赛伤病样本</p></article>
-        <article><span>04</span><h3>结果校验</h3><p>来源、置信度与冲突消息复核</p></article>
-      </div>
-      <div class="disclaimer"><strong>重要：</strong> “预计复出”是基于公开报道与历史样本的统计估计，不是医学诊断，也不代表俱乐部官方结论。</div>
+      <div class="injury-columns" aria-hidden="true"><span>球员</span><span>伤病</span><span>状态 / 预计复出</span><span>更新</span></div>
+      <div class="injury-list" id="injury-list" aria-live="polite"></div>
     </section>
   </main>
 
-  <footer><span>伤停线 · 数据预览版</span><span>缺阵记录不等同于俱乐部医疗报告，预测仅供参考</span></footer>
+  <footer><span>数据：Fantasy Premier League</span><span>球员状态不等同于俱乐部医疗报告</span></footer>
   <script src="./config.js?v=20260916-3"></script>
-  <script src="./app.js?v=20260916-3"></script>
+  <script src="./app.js?v=20260916-5"></script>
 </body>
 </html>
-

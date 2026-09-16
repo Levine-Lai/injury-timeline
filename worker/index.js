@@ -1,5 +1,6 @@
 const API_ORIGIN = 'https://v3.football.api-sports.io';
 const BIGBALLS_ORIGIN = 'https://api.bigballsdata.com';
+const FPL_BOOTSTRAP = 'https://fantasy.premierleague.com/api/bootstrap-static/';
 
 function json(value, status = 200, origin = '*') {
   return new Response(JSON.stringify(value), {
@@ -38,6 +39,42 @@ async function bigBalls(path, env, origin) {
     ? await response.json()
     : { error: await response.text() };
   return json(body, response.status, origin);
+}
+
+async function fplInjuries(origin) {
+  const response = await fetch(FPL_BOOTSTRAP, {
+    headers: { Accept: 'application/json', 'User-Agent': 'InjuryTimeline/1.0' },
+    cf: { cacheTtl: 900, cacheEverything: true },
+  });
+  if (!response.ok) return json({ error: 'FPL data unavailable' }, response.status, origin);
+  const payload = await response.json();
+  const teams = new Map((payload.teams || []).map(team => [team.id, team]));
+  const positions = new Map((payload.element_types || []).map(position => [position.id, position]));
+  const players = (payload.elements || [])
+    .filter(player => ['i', 'd'].includes(player.status) && player.news)
+    .map(player => {
+      const team = teams.get(player.team) || {};
+      const position = positions.get(player.element_type) || {};
+      const photoCode = String(player.photo || '').replace(/\.[^.]+$/, '');
+      return {
+        id: `fpl_${player.id}`,
+        fpl_id: player.id,
+        name: [player.first_name, player.second_name].filter(Boolean).join(' '),
+        display_name: player.web_name,
+        team_id: player.team,
+        team: team.name || '',
+        team_short: team.short_name || '',
+        position: position.singular_name || position.singular_name_short || '',
+        status: player.status,
+        news: player.news,
+        news_added: player.news_added,
+        chance_next_round: player.chance_of_playing_next_round,
+        chance_this_round: player.chance_of_playing_this_round,
+        photo: photoCode ? `https://resources.premierleague.com/premierleague/photos/players/110x140/p${photoCode}.png` : null,
+      };
+    });
+  const updatedAt = players.map(player => player.news_added).filter(Boolean).sort().at(-1) || null;
+  return json({ data: { teams: [...teams.values()].map(team => ({ id: team.id, name: team.name, short_name: team.short_name })), players }, meta: { source: 'Fantasy Premier League', updated_at: updatedAt } }, 200, origin);
 }
 
 async function history(url, env, origin) {
@@ -115,6 +152,7 @@ export default {
     if (url.pathname === '/api/absences') {
       return bigBalls('/v1/injuries?sport=football&league=epl', env, origin);
     }
+    if (url.pathname === '/api/fpl-injuries') return fplInjuries(origin);
     if (url.pathname === '/api/standings') {
       return bigBalls('/v1/standings?sport=football&league=epl', env, origin);
     }

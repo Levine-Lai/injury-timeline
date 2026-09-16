@@ -41,12 +41,17 @@ function injuryTerm(reason = '') {
     ['腿筋','hamstring'],['脚踝','ankle'],['膝','knee'],['腹股沟','groin'],
     ['小腿','calf'],['大腿','thigh'],['背','back'],['髋','hip'],['足','foot'],
     ['肌肉','muscle'],['肩','shoulder'],['跟腱','achilles'],['骨折','fracture'],
+    ['脑震荡','concussion'],['手腕','wrist'],['手臂','arm'],['腿部','leg'],['碰撞','knock'],
   ];
   const translated = chineseTerms.find(([label]) => reason.includes(label));
   if (translated) return translated[1];
   const terms = ['hamstring','ankle','knee','groin','calf','thigh','back','hip','foot','muscle','shoulder','achilles','fracture'];
   const lower = reason.toLowerCase();
   return terms.find(term => lower.includes(term)) || reason.split(/[,(/-]/)[0].trim();
+}
+
+function positionTerm(position = '') {
+  return ({'门将':'Goalkeeper','后卫':'Defender','中场':'Midfielder','前锋':'Forward'})[position] || position;
 }
 
 function formatDate(value) {
@@ -69,7 +74,7 @@ function initialPage() {
       <dl class="identity-facts">
         <div><dt>伤病</dt><dd>${escapeHtml(display(player.injury, '未公开'))}</dd></div>
         <div><dt>受伤日期</dt><dd>${formatDate(player.injuryDate)}</dd></div>
-        <div><dt>当前状态</dt><dd class="status-active">伤停</dd></div>
+        <div><dt>当前状态</dt><dd class="status-active ${player.status === 'doubtful' ? 'status-doubtful' : ''}">${escapeHtml(player.availability || '伤停')}</dd></div>
       </dl>
     </section>
 
@@ -81,7 +86,7 @@ function initialPage() {
           <div class="plot-labels"><span id="minimum-days">短</span><span id="average-days">历史均值</span><span id="maximum-days">长</span></div>
         </div>
         <dl class="recovery-facts">
-          <div><dt>预计日期</dt><dd id="estimated-date">—</dd></div>
+          <div><dt>预计日期</dt><dd id="estimated-date">${escapeHtml(player.expectedReturn || '—')}</dd></div>
           <div><dt>历史样本</dt><dd id="sample-size">—</dd></div>
           <div><dt>平均缺阵</dt><dd id="average-value">—</dd></div>
         </dl>
@@ -194,7 +199,7 @@ async function loadEvidence() {
 
     const params = new URLSearchParams({injury: term, limit: '6'});
     if (player.age) params.set('age', player.age);
-    if (display(player.position) !== '—') params.set('position', player.position);
+    if (display(player.position) !== '—') params.set('position', positionTerm(player.position));
     const [casesResponse, statsResponse] = await Promise.all([
       fetch(`${apiBase}/api/similar?${params}`),
       fetch(`${apiBase}/api/history/stats?${params}`),

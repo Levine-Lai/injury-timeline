@@ -1,123 +1,127 @@
 let players = [];
-let teamStats = [];
+let teams = [];
+let selectedTeam = 0;
+
 const apiBase = (window.INJURY_API_BASE || '.').replace(/\/$/, '');
 const list = document.querySelector('#injury-list');
+const injuryNames = {
+  'Achilles injury':'跟腱伤势','Ankle injury':'脚踝伤势','Arm injury':'手臂伤势',
+  'Back injury':'背部伤势','Calf injury':'小腿伤势','Concussion':'脑震荡',
+  'Foot injury':'足部伤势','Groin injury':'腹股沟伤势','Hamstring injury':'腿筋伤势',
+  'Hand injury':'手部伤势','Knee injury':'膝部伤势','Knock':'碰撞伤',
+  'Leg injury':'腿部伤势','Muscular injury':'肌肉伤势','Thigh injury':'大腿伤势',
+  'Unspecified injury':'伤情未明确','Wrist injury':'手腕伤势',
+};
+const positionNames = {Goalkeeper:'门将', Defender:'后卫', Midfielder:'中场', Forward:'前锋'};
 
-const fallbackPlayers = [
-  {id:'demo-saka',name:'Bukayo Saka',initials:'BS',team:'Arsenal',club:'#d51f35',position:'右边锋',injury:'腿筋伤势',area:'公开缺阵记录',severity:'medium',status:'new',return:'等待球队更新',days:'14–35 天',confidence:'历史区间',reported:'示例数据',note:'实时源暂不可用',age:null,absenceCount:2},
-  {id:'demo-haaland',name:'Erling Haaland',initials:'EH',team:'Manchester City',club:'#6cabdd',position:'中锋',injury:'脚踝伤势',area:'公开缺阵记录',severity:'medium',status:'returning',return:'等待球队更新',days:'14–35 天',confidence:'历史区间',reported:'示例数据',note:'实时源暂不可用',age:null,absenceCount:1},
-];
-
-function escapeHtml(value='') {
+function escapeHtml(value = '') {
   return String(value).replace(/[&<>'"]/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[character]));
 }
 
-function first(...values) {
-  return values.find(value => value !== undefined && value !== null && value !== '') ?? '';
+function initials(name = '') {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase() || 'PL';
 }
 
-function rowsFrom(payload) {
-  if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload?.data?.injuries?.value)) return payload.data.injuries.value;
-  for (const key of ['data','results','injuries','absences','response']) {
-    if (Array.isArray(payload?.[key])) return payload[key];
-    if (Array.isArray(payload?.data?.[key])) return payload.data[key];
+function formatDate(value) {
+  if (!value) return '—';
+  const date = new Date(String(value).replace(' ', 'T') + (String(value).includes('Z') ? '' : 'Z'));
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('zh-CN', {month:'numeric', day:'numeric'});
+}
+
+function localizeReturn(detail = '') {
+  if (/Unknown return date/i.test(detail)) return '复出时间未定';
+  const expected = detail.match(/Expected back\s+(.+)/i);
+  if (expected) {
+    const months = {Jan:'1月',Feb:'2月',Mar:'3月',Apr:'4月',May:'5月',Jun:'6月',Jul:'7月',Aug:'8月',Sep:'9月',Oct:'10月',Nov:'11月',Dec:'12月'};
+    const parts = expected[1].trim().split(/\s+/);
+    return parts.length >= 2 ? `预计复出 ${months[parts[1]] || parts[1]}${parts[0]}日` : `预计复出 ${expected[1]}`;
   }
-  return [];
+  const chance = detail.match(/(\d+)% chance of playing/i);
+  if (chance) return `下轮出场概率 ${chance[1]}%`;
+  return detail || '复出时间未定';
 }
 
-function dateValue(row) {
-  return first(row.match_date,row.fixture_date,row.date,row.game_date,row.match?.date,row.fixture?.date,row.match?.kickoff,row.created_at);
-}
-
-function normalizeRow(row, index) {
-  const playerObject = typeof row.player === 'object' ? row.player : {};
-  const teamObject = typeof row.team === 'object' ? row.team : {};
-  const name = first(row.player_name,row.full_name,row.display_name,row.name,playerObject.name,playerObject.full_name,'未知球员');
-  const team = first(row.team_name,row.club,row.squad,teamObject.name,teamObject.short_name,'英超');
-  const reason = first(row.reason,row.injury,row.description,row.status,row.type,row.comment,'伤停（原因未公开）');
-  const date = dateValue(row);
+function normalizePlayer(row) {
+  const [rawInjury = 'Unspecified injury', detail = ''] = String(row.news || '').split(/\s+-\s+/, 2);
+  const injury = injuryNames[rawInjury] || rawInjury;
+  const doubtful = row.status === 'd';
+  const availability = doubtful ? '出场存疑' : '伤停';
   return {
-    source: row,
-    id: String(first(row.player_id,playerObject.id,row.id,`${name}-${index}`)),
-    name,
-    team,
-    injury: reason,
-    position: first(row.position,playerObject.position,'球员'),
-    age: first(row.age,playerObject.age,null),
-    reportedDate: date,
+    ...row,
+    name: row.name || row.display_name,
+    position: positionNames[row.position] || row.position,
+    initials: initials(row.name || row.display_name),
+    injury,
+    injuryRaw: rawInjury,
+    expectedReturn: localizeReturn(detail),
+    availability,
+    severity: doubtful ? 'medium' : 'high',
+    status: doubtful ? 'doubtful' : 'injured',
+    reportedDate: row.news_added,
+    reported: formatDate(row.news_added),
+    return: doubtful && row.chance_next_round !== null ? `${row.chance_next_round}% 出场概率` : localizeReturn(detail),
+    area: availability,
+    photo: row.photo,
+    note: row.news,
+    age: null,
   };
 }
 
-function isNonInjury(reason='') {
-  return /suspension|red card|yellow card|international duty|loan|transfer|personal|not in squad|rested/i.test(reason);
+function avatarMarkup(player) {
+  if (!player.photo) return `<span class="avatar">${escapeHtml(player.initials)}</span>`;
+  return `<span class="avatar photo-avatar"><img src="${escapeHtml(player.photo)}" alt="${escapeHtml(player.name)}" data-fallback="${escapeHtml(player.initials)}" /></span>`;
 }
 
-function severityFor(reason, missed) {
-  if (/原因未公开|待确认/i.test(reason)) return 'unknown';
-  if (/acl|cruciate|achilles|fracture|surgery|rupture|season/i.test(reason) || missed >= 6) return 'high';
-  if (/hamstring|muscle|ankle|knee|groin|calf|thigh|back|hip/i.test(reason) || missed >= 3) return 'medium';
-  return 'low';
+function bindImageFallbacks() {
+  document.querySelectorAll('img[data-fallback]').forEach(image => image.addEventListener('error', () => {
+    image.parentElement.textContent = image.dataset.fallback;
+    image.parentElement.classList.remove('photo-avatar');
+  }, {once:true}));
 }
 
-function daysFor(severity) {
-  return severity === 'high' ? '60–180 天' : severity === 'medium' ? '14–35 天' : severity === 'low' ? '3–14 天' : '等待伤情信息';
+function visiblePlayers() {
+  return players.filter(player => !selectedTeam || player.team_id === selectedTeam);
 }
 
-function clubColor(team='') {
-  const colors = ['#2674d9','#269c68','#e34b52','#6b7bd6','#e08b3d','#2e9aa8'];
-  let sum = 0;
-  for (const character of team) sum += character.codePointAt(0) || 0;
-  return colors[sum % colors.length];
+function renderList() {
+  const visible = visiblePlayers().sort((a, b) => String(b.news_added).localeCompare(String(a.news_added)));
+  const heading = selectedTeam ? teams.find(team => team.id === selectedTeam)?.name : '全部球队';
+  document.querySelector('#injury-list-title').textContent = heading || '全部球队';
+  document.querySelector('#selection-count').textContent = `${visible.length} 名球员`;
+  if (!visible.length) {
+    list.innerHTML = '<div class="empty-state">当前没有伤病记录</div>';
+    return;
+  }
+  list.innerHTML = visible.map(player => `
+    <button class="injury-row fpl-row" data-id="${escapeHtml(player.id)}">
+      <span class="fpl-player">${avatarMarkup(player)}<span><strong>${escapeHtml(player.name)}</strong><small>${escapeHtml(player.team)} · ${escapeHtml(player.position)}</small></span></span>
+      <span class="injury-type"><strong>${escapeHtml(player.injury)}</strong><small>${player.status === 'doubtful' ? '出场情况待赛前确认' : '当前列为伤病状态'}</small></span>
+      <span class="availability"><span class="availability-label ${player.status}">${escapeHtml(player.availability)}</span><strong>${escapeHtml(player.expectedReturn)}</strong></span>
+      <span class="update-date"><strong>${escapeHtml(player.reported)}</strong><small>状态更新</small></span>
+      <span class="row-arrow">›</span>
+    </button>`).join('');
+  bindImageFallbacks();
 }
 
-function buildPlayers(payload) {
-  const rows = rowsFrom(payload).map(normalizeRow).filter(row => row.name !== '未知球员');
-  const metaDate = first(payload?.meta?.as_of,payload?.as_of);
-  const timestamps = rows.map(row => Date.parse(row.reportedDate)).filter(Number.isFinite);
-  const newest = metaDate ? Date.parse(metaDate) : Math.max(...timestamps);
-  const recentCutoff = Number.isFinite(newest) ? newest - 35 * 86400000 : 0;
-  const groups = new Map();
-  rows.forEach(row => {
-    const key = row.id || row.name;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(row);
-  });
-  const result = [];
-  groups.forEach(records => {
-    records.sort((a,b) => (Date.parse(b.reportedDate) || 0) - (Date.parse(a.reportedDate) || 0));
-    const latest = records[0];
-    const latestTime = Date.parse(latest.reportedDate) || 0;
-    if (recentCutoff && latestTime && latestTime < recentCutoff) return;
-    if (isNonInjury(latest.injury)) return;
-    const windowStart = latestTime - 45 * 86400000;
-    const absenceCount = records.filter(record => (Date.parse(record.reportedDate) || 0) >= windowStart).length;
-    const severity = severityFor(latest.injury, absenceCount);
-    const isNew = Number.isFinite(newest) && newest - latestTime <= 7 * 86400000;
-    result.push({
-      ...latest,
-      initials: latest.name.split(/\s+/).map(part => part[0]).join('').slice(0,2).toUpperCase(),
-      club: clubColor(latest.team),
-      area: `${absenceCount} 场缺阵记录`,
-      severity,
-      status: severity === 'high' ? 'serious' : isNew ? 'new' : 'returning',
-      return: '等待球队更新',
-      days: daysFor(severity),
-      confidence: `${absenceCount} 场样本`,
-      reported: latest.reportedDate ? new Date(latest.reportedDate).toLocaleDateString('zh-CN') : '最近更新',
-      note: `Big Balls Sports 缺阵原因：${latest.injury}`,
-      absenceCount,
-    });
-  });
-  result.sort((a,b) => (Date.parse(b.reportedDate) || 0) - (Date.parse(a.reportedDate) || 0));
-  return { players: result.slice(0,80), asOf: metaDate || result[0]?.reportedDate || '', rawCount: rows.length };
+function renderTeamTabs() {
+  const counts = new Map();
+  players.forEach(player => counts.set(player.team_id, (counts.get(player.team_id) || 0) + 1));
+  const tabs = [{id:0,name:'全部',short_name:'ALL'}, ...teams];
+  document.querySelector('#team-tabs').innerHTML = tabs.map(team => `
+    <button class="team-tab${team.id === selectedTeam ? ' active' : ''}" role="tab" aria-selected="${team.id === selectedTeam}" data-team="${team.id}">
+      <span>${escapeHtml(team.name)}</span><b>${team.id ? counts.get(team.id) || 0 : players.length}</b>
+    </button>`).join('');
 }
 
-function severityLabel(value) { return value === 'high' ? '长期' : value === 'medium' ? '中等' : value === 'low' ? '轻微' : '待确认'; }
-
-function renderList(filter='all', team='') {
-  const filtered = players.filter(player => (filter === 'all' || player.status === filter) && (!team || player.team === team));
-  list.innerHTML = filtered.length ? filtered.map(player => `<button class="injury-row" data-id="${escapeHtml(player.id)}"><span class="avatar" style="--club:${player.club}">${escapeHtml(player.initials)}</span><span class="player"><strong>${escapeHtml(player.name)}</strong><small>${escapeHtml(player.team)} · ${escapeHtml(player.position)}</small></span><span class="injury-type"><strong>${escapeHtml(player.injury)}</strong><small>${escapeHtml(player.area)} · ${escapeHtml(player.reported)}</small></span><span class="return-date"><small>状态</small><strong>${escapeHtml(player.return)}</strong></span><span class="severity ${player.severity}">${severityLabel(player.severity)}</span><span class="row-arrow">›</span></button>`).join('') : '<div class="empty-state">当前筛选下暂无记录</div>';
+function renderStats() {
+  const doubtful = players.filter(player => player.status === 'doubtful').length;
+  const knownReturn = players.filter(player => /^预计复出/.test(player.expectedReturn)).length;
+  const affectedTeams = new Set(players.map(player => player.team_id)).size;
+  document.querySelector('#stat-current').textContent = players.length;
+  document.querySelector('#stat-doubtful').textContent = doubtful;
+  document.querySelector('#stat-return').textContent = knownReturn;
+  document.querySelector('#stat-teams').textContent = affectedTeams;
+  document.querySelector('#data-summary').textContent = `${teams.length} 支球队 · 仅显示有明确伤病状态的球员`;
 }
 
 function openPlayer(id) {
@@ -126,46 +130,15 @@ function openPlayer(id) {
   window.location.href = `./player.html?id=${encodeURIComponent(id)}`;
 }
 
-function calculateTeams() {
-  const counts = new Map();
-  players.forEach(player => counts.set(player.team, (counts.get(player.team) || 0) + 1));
-  const maximum = Math.max(...counts.values(), 1);
-  teamStats = [...counts.entries()].map(([name,count]) => [name,count,Math.round(count / maximum * 100),clubColor(name)]).sort((a,b) => b[1]-a[1]);
-}
-
-function renderPressure() {
-  const chart = document.querySelector('#pressure-chart');
-  if (teamStats.length === 1 && teamStats[0][0] === '英超') {
-    chart.innerHTML = `<div class="coverage-card"><strong>${players.length}</strong><span>名当前伤停球员</span><small>数据源暂未提供可关联的球队字段</small></div>`;
-    return;
-  }
-  chart.innerHTML = teamStats.slice(0,7).map(([name,count,score,color]) => `<div class="pressure-item"><span>${escapeHtml(name)} · ${count}人</span><div class="bar-track"><div class="bar" style="--w:${score}%;--club:${color}"></div></div><b>${score}</b></div>`).join('') || '<div class="empty-state">暂无球队数据</div>';
-}
-
-function renderTeams() {
-  document.querySelector('#team-grid').innerHTML = teamStats.map(([name,count,score,color]) => `<button class="team-card" data-team="${escapeHtml(name)}"><span class="team-badge" style="--club:${color}">${escapeHtml(name.split(/\s/).map(part=>part[0]).join('').slice(0,3))}</span><strong>${escapeHtml(name)}</strong><p>${count} 人近期缺阵 · 压力指数 ${score}</p><div class="meter"><i style="--club:${color};--pressure:${score}%"></i></div><footer><span>近期状态</span><span>${score>70?'高风险':score>35?'需关注':'稳定'}</span></footer></button>`).join('');
-}
-
-function renderTimeline() {
-  document.querySelector('#timeline-list').innerHTML = players.map(player => `<button class="timeline-item" data-id="${escapeHtml(player.id)}"><span class="timeline-time">${escapeHtml(player.reported)}</span><i class="timeline-dot"></i><span class="timeline-copy"><strong>${escapeHtml(player.name)} · ${escapeHtml(player.injury)}</strong><span>${escapeHtml(player.team)}｜${escapeHtml(player.area)}</span></span><span class="severity ${player.severity}">${severityLabel(player.severity)}</span></button>`).join('');
-}
-
-function renderAll() {
-  calculateTeams(); renderList(); renderPressure(); renderTeams(); renderTimeline();
-}
-
-function switchView(view) {
-  document.querySelectorAll('[data-panel]').forEach(panel => panel.classList.toggle('hidden', panel.dataset.panel !== view));
-  document.querySelectorAll('.nav-link').forEach(link => link.classList.toggle('active', link.dataset.view === view));
-  window.scrollTo({top:0,behavior:'smooth'});
-}
-
 document.addEventListener('click', event => {
-  const row = event.target.closest('[data-id]'); if (row) openPlayer(row.dataset.id);
-  const nav = event.target.closest('[data-view]'); if (nav) switchView(nav.dataset.view);
-  const filter = event.target.closest('[data-filter]');
-  if (filter) { document.querySelectorAll('.filter').forEach(item => item.classList.remove('active')); filter.classList.add('active'); renderList(filter.dataset.filter); }
-  const team = event.target.closest('[data-team]'); if (team) { switchView('overview'); renderList('all', team.dataset.team); }
+  const row = event.target.closest('[data-id]');
+  if (row) openPlayer(row.dataset.id);
+  const tab = event.target.closest('[data-team]');
+  if (tab) {
+    selectedTeam = Number(tab.dataset.team);
+    renderTeamTabs();
+    renderList();
+  }
 });
 
 const search = document.querySelector('#global-search');
@@ -173,42 +146,34 @@ const results = document.querySelector('#search-results');
 function updateSearch() {
   const query = search.value.trim().toLowerCase();
   if (!query) { results.classList.remove('open'); return; }
-  const matched = players.filter(player => [player.name,player.team,player.injury,player.position].join(' ').toLowerCase().includes(query)).slice(0,10);
+  const matched = players.filter(player => [player.name, player.team, player.injury, player.position].join(' ').toLowerCase().includes(query)).slice(0, 10);
   results.innerHTML = matched.length ? matched.map(player => `<button class="search-result" data-id="${escapeHtml(player.id)}" role="option"><strong>${escapeHtml(player.name)}</strong><small>${escapeHtml(player.team)} · ${escapeHtml(player.injury)}</small></button>`).join('') : '<div class="empty-state compact">没有匹配结果</div>';
   results.classList.add('open');
 }
 search.addEventListener('input', updateSearch);
-search.addEventListener('keydown', event => { if (event.key === 'Escape') { search.value=''; results.classList.remove('open'); } });
-document.addEventListener('keydown', event => { if (event.key === '/' && document.activeElement !== search) { event.preventDefault(); search.focus(); } });
+search.addEventListener('keydown', event => { if (event.key === 'Escape') { search.value = ''; results.classList.remove('open'); } });
 document.addEventListener('click', event => { if (!event.target.closest('.search-wrap')) results.classList.remove('open'); });
 
-async function syncAbsences() {
-  list.innerHTML = '<div class="loading-state"><span></span>正在读取英超缺阵数据</div>';
+async function syncInjuries() {
+  list.innerHTML = '<div class="loading-state"><span></span>正在读取英超伤病数据</div>';
   try {
-    const response = await fetch(`${apiBase}/api/absences`, {headers:{Accept:'application/json'}});
+    const response = await fetch(`${apiBase}/api/fpl-injuries`, {headers:{Accept:'application/json'}});
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const payload = await response.json();
-    const normalized = buildPlayers(payload);
-    if (!normalized.players.length) throw new Error('empty dataset');
-    players = normalized.players;
-    const newCount = players.filter(player => player.status === 'new').length;
-    const seriousCount = players.filter(player => player.severity === 'high').length;
-    document.querySelector('#stat-current').textContent = players.length;
-    document.querySelector('#stat-new').textContent = normalized.asOf ? '—' : newCount;
-    document.querySelector('#stat-return').textContent = seriousCount;
-    document.querySelector('#stat-teams').textContent = `${normalized.rawCount} 条当前记录`;
-    document.querySelector('.freshness').innerHTML = `<i></i> Big Balls · ${normalized.asOf ? `截至 ${escapeHtml(normalized.asOf)}` : '已同步'}`;
-    renderAll();
+    players = (payload?.data?.players || []).map(normalizePlayer);
+    teams = payload?.data?.teams || [];
+    if (!players.length || teams.length !== 20) throw new Error('incomplete dataset');
+    renderStats();
+    renderTeamTabs();
+    renderList();
+    const updated = formatDate(payload?.meta?.updated_at);
+    document.querySelector('.freshness').innerHTML = `<i></i> FPL · 更新至 ${escapeHtml(updated)}`;
   } catch (_error) {
-    players = fallbackPlayers;
-    document.querySelector('#stat-current').textContent = '2';
-    document.querySelector('#stat-new').textContent = '1';
-    document.querySelector('#stat-return').textContent = '0';
-    document.querySelector('#stat-teams').textContent = '数据源连接中';
-    document.querySelector('.freshness').innerHTML = '<i class="warning-dot"></i> 实时源暂不可用 · 展示示例';
-    renderAll();
+    document.querySelector('#data-summary').textContent = '数据暂时无法读取';
+    document.querySelector('.freshness').innerHTML = '<i class="warning-dot"></i> 更新失败';
+    document.querySelector('#team-tabs').innerHTML = '';
+    list.innerHTML = '<div class="empty-state">伤病数据暂时不可用</div>';
   }
 }
 
-syncAbsences();
-
+syncInjuries();
