@@ -5,3 +5,8 @@ compatibility_date = "2026-09-15"
 [vars]
 ALLOWED_ORIGIN = "https://levine-lai.github.io"
 
+[[d1_databases]]
+binding = "injury_history"
+database_name = "injury-history"
+database_id = "06323683-1d8b-4ef0-afb1-d9354a28fadf"
+

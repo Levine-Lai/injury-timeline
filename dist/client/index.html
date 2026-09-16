@@ -20,7 +20,7 @@
       <button class="nav-link" data-view="timeline">时间线</button>
       <button class="nav-link" data-view="method">数据说明</button>
     </nav>
-    <div class="freshness"><i></i> API-Football · 演示</div>
+    <div class="freshness"><i></i> 正在同步数据</div>
   </header>
 
   <main id="top">
@@ -40,19 +40,19 @@
     </section>
 
     <section class="league-strip" aria-label="联赛伤病概览">
-      <article><span>当前伤停</span><strong id="stat-current">47</strong><small>20 支球队</small></article>
-      <article><span>本周新增</span><strong class="accent" id="stat-new">8</strong><small>较上周 −3</small></article>
-      <article><span>预计 14 天内复出</span><strong id="stat-return">19</strong><small>占当前伤停 40%</small></article>
-      <article><span>平均缺阵</span><strong>23<em>天</em></strong><small>过去 3 个赛季</small></article>
+      <article><span>近期缺阵球员</span><strong id="stat-current">—</strong><small id="stat-teams">正在加载</small></article>
+      <article><span>最近 7 天新增</span><strong class="accent" id="stat-new">—</strong><small>按最新比赛日期</small></article>
+      <article><span>长期风险</span><strong id="stat-return">—</strong><small>按连续缺阵场次估计</small></article>
+      <article><span>历史样本</span><strong>15,603</strong><small>2020–2025 五大联赛</small></article>
     </section>
 
     <section class="workspace" data-panel="overview">
       <div class="section-heading">
-        <div><h2>最新伤病动态</h2></div>
+        <div><h2>英超最新缺阵动态</h2></div>
         <div class="filter-row" role="group" aria-label="伤情筛选">
           <button class="filter active" data-filter="all">全部</button>
           <button class="filter" data-filter="new">新伤</button>
-          <button class="filter" data-filter="returning">接近复出</button>
+          <button class="filter" data-filter="returning">一般关注</button>
           <button class="filter" data-filter="serious">长期伤停</button>
         </div>
       </div>
@@ -78,16 +78,16 @@
     <section class="workspace hidden" data-panel="method">
       <div class="section-heading"><div><h2>数据与预测</h2></div></div>
       <div class="method-grid">
-        <article><span>01</span><h3>数据采集</h3><p>API、俱乐部公告、赛前发布会</p></article>
+        <article><span>01</span><h3>实时缺阵</h3><p>Big Balls Sports 英超缺阵记录</p></article>
         <article><span>02</span><h3>更新识别</h3><p>定时快照与字段差异检测</p></article>
-        <article><span>03</span><h3>相似案例</h3><p>伤病、年龄、位置、复发记录</p></article>
+        <article><span>03</span><h3>历史案例</h3><p>15,603 条五大联赛伤病样本</p></article>
         <article><span>04</span><h3>结果校验</h3><p>来源、置信度与冲突消息复核</p></article>
       </div>
       <div class="disclaimer"><strong>重要：</strong> “预计复出”是基于公开报道与历史样本的统计估计，不是医学诊断，也不代表俱乐部官方结论。</div>
     </section>
   </main>
 
-  <footer><span>伤停线 · 概念验证版</span><span>所有页面数据均为产品演示，不代表实时球员状态</span></footer>
+  <footer><span>伤停线 · 数据预览版</span><span>缺阵记录不等同于俱乐部医疗报告，预测仅供参考</span></footer>
   <script src="./config.js"></script>
   <script src="./app.js"></script>
 </body>

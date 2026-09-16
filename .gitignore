@@ -2,4 +2,8 @@
 .dev.vars
 .sites-runtime/
 node_modules/
+data/source/
+data/*.sqlite
+data/*.sqlite-*
+data/*.sql
 
