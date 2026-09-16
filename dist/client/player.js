@@ -51,7 +51,11 @@ function injuryTerm(reason = '') {
 }
 
 function positionTerm(position = '') {
-  return ({'门将':'Goalkeeper','后卫':'Defender','中场':'Midfielder','前锋':'Forward'})[position] || position;
+  return ({'门将':'Goalkeeper','后卫':'Defender','中场':'Midfielder','前锋':'Forward',GK:'Goalkeeper',DEF:'Defender',MID:'Midfielder',FWD:'Forward'})[position] || position;
+}
+
+function displayPosition(position = '') {
+  return ({Goalkeeper:'门将',Defender:'后卫',Midfielder:'中场',Forward:'前锋',GK:'门将',DEF:'后卫',MID:'中场',FWD:'前锋'})[position] || display(position);
 }
 
 function formatDate(value) {
@@ -70,7 +74,7 @@ function initialPage() {
   root.innerHTML = `
     <section class="identity-panel" id="identity-panel">
       ${avatarMarkup(player)}
-      <div class="identity-name"><h1>${escapeHtml(player.name)}</h1><p><span id="player-position">${escapeHtml(display(player.position))}</span><i></i><span id="player-team">${escapeHtml(display(player.team))}</span></p></div>
+      <div class="identity-name"><h1>${escapeHtml(player.name)}</h1><p><span id="player-position">${escapeHtml(displayPosition(player.position))}</span><i></i><span id="player-team">${escapeHtml(display(player.team))}</span></p></div>
       <dl class="identity-facts">
         <div><dt>伤病</dt><dd>${escapeHtml(display(player.injury, '未公开'))}</dd></div>
         <div><dt>受伤日期</dt><dd>${formatDate(player.injuryDate)}</dd></div>
@@ -98,7 +102,7 @@ function initialPage() {
       <div class="similar-head"><span>球员</span><span>相似率</span><span>受伤日期</span><span>受伤天数</span></div>
       <div class="similar-list" id="case-table"><div class="loading-inline">读取中</div></div>
     </section>
-    <p class="player-source">实时状态：Big Balls Sports · 历史样本：European Football Injuries 2020–2025</p>`;
+    <p class="player-source">实时状态：${id.startsWith('fpl_') ? 'Fantasy Premier League' : 'Big Balls Sports'} · 历史样本：European Football Injuries 2020–2025</p>`;
   return true;
 }
 
@@ -113,7 +117,7 @@ function updateIdentity(profile) {
   };
   sessionStorage.setItem('injury-player', JSON.stringify(player));
   document.querySelector('#identity-panel').querySelector('.detail-avatar').outerHTML = avatarMarkup(player);
-  document.querySelector('#player-position').textContent = display(player.position);
+  document.querySelector('#player-position').textContent = displayPosition(player.position);
   document.querySelector('#player-team').textContent = display(player.team);
 }
 
