@@ -79,6 +79,10 @@ function bindImageFallbacks() {
   }, {once:true}));
 }
 
+function bindTeamImageFallbacks() {
+  document.querySelectorAll('img[data-team-logo]').forEach(image => image.addEventListener('error', () => image.remove(), {once:true}));
+}
+
 function visiblePlayers() {
   return players.filter(player => !selectedTeam || player.team_id === selectedTeam);
 }
@@ -106,22 +110,13 @@ function renderList() {
 function renderTeamTabs() {
   const counts = new Map();
   players.forEach(player => counts.set(player.team_id, (counts.get(player.team_id) || 0) + 1));
-  const tabs = [{id:0,name:'全部',short_name:'ALL'}, ...teams];
-  document.querySelector('#team-tabs').innerHTML = tabs.map(team => `
+  document.querySelector('.all-teams').classList.toggle('active', selectedTeam === 0);
+  document.querySelector('#team-tabs').innerHTML = teams.map(team => `
     <button class="team-tab${team.id === selectedTeam ? ' active' : ''}" role="tab" aria-selected="${team.id === selectedTeam}" data-team="${team.id}">
-      <span>${escapeHtml(team.name)}</span><b>${team.id ? counts.get(team.id) || 0 : players.length}</b>
+      <span class="team-logo"><em>${escapeHtml(team.short_name)}</em>${team.logo ? `<img src="${escapeHtml(team.logo)}" alt="${escapeHtml(team.name)} 队徽" data-team-logo />` : ''}</span>
+      <span class="team-tab-name">${escapeHtml(team.name)}</span><b>${counts.get(team.id) || 0}</b>
     </button>`).join('');
-}
-
-function renderStats() {
-  const doubtful = players.filter(player => player.status === 'doubtful').length;
-  const knownReturn = players.filter(player => /^预计复出/.test(player.expectedReturn)).length;
-  const affectedTeams = new Set(players.map(player => player.team_id)).size;
-  document.querySelector('#stat-current').textContent = players.length;
-  document.querySelector('#stat-doubtful').textContent = doubtful;
-  document.querySelector('#stat-return').textContent = knownReturn;
-  document.querySelector('#stat-teams').textContent = affectedTeams;
-  document.querySelector('#data-summary').textContent = `${teams.length} 支球队 · 仅显示有明确伤病状态的球员`;
+  bindTeamImageFallbacks();
 }
 
 function openPlayer(id) {
@@ -141,19 +136,6 @@ document.addEventListener('click', event => {
   }
 });
 
-const search = document.querySelector('#global-search');
-const results = document.querySelector('#search-results');
-function updateSearch() {
-  const query = search.value.trim().toLowerCase();
-  if (!query) { results.classList.remove('open'); return; }
-  const matched = players.filter(player => [player.name, player.team, player.injury, player.position].join(' ').toLowerCase().includes(query)).slice(0, 10);
-  results.innerHTML = matched.length ? matched.map(player => `<button class="search-result" data-id="${escapeHtml(player.id)}" role="option"><strong>${escapeHtml(player.name)}</strong><small>${escapeHtml(player.team)} · ${escapeHtml(player.injury)}</small></button>`).join('') : '<div class="empty-state compact">没有匹配结果</div>';
-  results.classList.add('open');
-}
-search.addEventListener('input', updateSearch);
-search.addEventListener('keydown', event => { if (event.key === 'Escape') { search.value = ''; results.classList.remove('open'); } });
-document.addEventListener('click', event => { if (!event.target.closest('.search-wrap')) results.classList.remove('open'); });
-
 async function syncInjuries() {
   list.innerHTML = '<div class="loading-state"><span></span>正在读取英超伤病数据</div>';
   try {
@@ -163,13 +145,11 @@ async function syncInjuries() {
     players = (payload?.data?.players || []).map(normalizePlayer);
     teams = payload?.data?.teams || [];
     if (!players.length || teams.length !== 20) throw new Error('incomplete dataset');
-    renderStats();
     renderTeamTabs();
     renderList();
     const updated = formatDate(payload?.meta?.updated_at);
     document.querySelector('.freshness').innerHTML = `<i></i> FPL · 更新至 ${escapeHtml(updated)}`;
   } catch (_error) {
-    document.querySelector('#data-summary').textContent = '数据暂时无法读取';
     document.querySelector('.freshness').innerHTML = '<i class="warning-dot"></i> 更新失败';
     document.querySelector('#team-tabs').innerHTML = '';
     list.innerHTML = '<div class="empty-state">伤病数据暂时不可用</div>';

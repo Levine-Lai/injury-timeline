@@ -74,7 +74,13 @@ async function fplInjuries(origin) {
       };
     });
   const updatedAt = players.map(player => player.news_added).filter(Boolean).sort().at(-1) || null;
-  return json({ data: { teams: [...teams.values()].map(team => ({ id: team.id, name: team.name, short_name: team.short_name })), players }, meta: { source: 'Fantasy Premier League', updated_at: updatedAt } }, 200, origin);
+  return json({ data: { teams: [...teams.values()].map(team => ({
+    id: team.id,
+    name: team.name,
+    short_name: team.short_name,
+    code: team.code,
+    logo: team.code ? `https://resources.premierleague.com/premierleague/badges/t${team.code}.svg` : null,
+  })), players }, meta: { source: 'Fantasy Premier League', updated_at: updatedAt } }, 200, origin);
 }
 
 async function history(url, env, origin) {

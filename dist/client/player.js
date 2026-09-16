@@ -203,7 +203,6 @@ async function loadEvidence() {
 
     const params = new URLSearchParams({injury: term, limit: '6'});
     if (player.age) params.set('age', player.age);
-    if (display(player.position) !== '—') params.set('position', positionTerm(player.position));
     const [casesResponse, statsResponse] = await Promise.all([
       fetch(`${apiBase}/api/similar?${params}`),
       fetch(`${apiBase}/api/history/stats?${params}`),
