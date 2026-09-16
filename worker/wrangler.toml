@@ -3,5 +3,5 @@ main = "index.js"
 compatibility_date = "2026-09-15"
 
 [vars]
-ALLOWED_ORIGIN = "*"
+ALLOWED_ORIGIN = "https://levine-lai.github.io"
 
