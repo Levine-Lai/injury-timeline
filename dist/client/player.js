@@ -11,6 +11,13 @@ function escapeHtml(value='') {
 }
 
 function injuryTerm(reason='') {
+  const chineseTerms = [
+    ['腿筋','hamstring'],['脚踝','ankle'],['膝','knee'],['腹股沟','groin'],
+    ['小腿','calf'],['大腿','thigh'],['背','back'],['髋','hip'],['足','foot'],
+    ['肌肉','muscle'],['肩','shoulder'],['跟腱','achilles'],['骨折','fracture'],
+  ];
+  const translated = chineseTerms.find(([label]) => reason.includes(label));
+  if (translated) return translated[1];
   const terms = ['hamstring','ankle','knee','groin','calf','thigh','back','hip','foot','muscle','shoulder','achilles','fracture'];
   const lower = reason.toLowerCase();
   return terms.find(term => lower.includes(term)) || reason.split(/[,(\-/]/)[0].trim() || 'injury';
