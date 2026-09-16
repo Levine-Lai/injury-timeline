@@ -41,7 +41,25 @@ async function bigBalls(path, env, origin) {
   return json(body, response.status, origin);
 }
 
-async function fplInjuries(origin) {
+async function teamBadge(url, origin) {
+  const code = (url.searchParams.get('code') || '').trim();
+  if (!/^\d+$/.test(code)) return json({ error: 'valid team code is required' }, 400, origin);
+  const response = await fetch(`https://resources.premierleague.com/premierleague/badges/50/t${code}.png`, {
+    headers: { Accept: 'image/png', 'User-Agent': 'InjuryTimeline/1.0' },
+    cf: { cacheTtl: 86400, cacheEverything: true },
+  });
+  if (!response.ok) return json({ error: 'team badge unavailable' }, response.status, origin);
+  return new Response(response.body, {
+    status: 200,
+    headers: {
+      'content-type': 'image/png',
+      'cache-control': 'public, max-age=86400',
+      'access-control-allow-origin': origin,
+    },
+  });
+}
+
+async function fplInjuries(request, origin) {
   const response = await fetch(FPL_BOOTSTRAP, {
     headers: { Accept: 'application/json', 'User-Agent': 'InjuryTimeline/1.0' },
     cf: { cacheTtl: 900, cacheEverything: true },
@@ -74,12 +92,13 @@ async function fplInjuries(origin) {
       };
     });
   const updatedAt = players.map(player => player.news_added).filter(Boolean).sort().at(-1) || null;
+  const workerOrigin = new URL(request.url).origin;
   return json({ data: { teams: [...teams.values()].map(team => ({
     id: team.id,
     name: team.name,
     short_name: team.short_name,
     code: team.code,
-    logo: team.code ? `https://resources.premierleague.com/premierleague/badges/t${team.code}.svg` : null,
+    logo: team.code ? `${workerOrigin}/api/team-badge?code=${team.code}` : null,
   })), players }, meta: { source: 'Fantasy Premier League', updated_at: updatedAt } }, 200, origin);
 }
 
@@ -158,7 +177,8 @@ export default {
     if (url.pathname === '/api/absences') {
       return bigBalls('/v1/injuries?sport=football&league=epl', env, origin);
     }
-    if (url.pathname === '/api/fpl-injuries') return fplInjuries(origin);
+    if (url.pathname === '/api/team-badge') return teamBadge(url, origin);
+    if (url.pathname === '/api/fpl-injuries') return fplInjuries(request, origin);
     if (url.pathname === '/api/standings') {
       return bigBalls('/v1/standings?sport=football&league=epl', env, origin);
     }
