@@ -86,7 +86,7 @@ function initialPage() {
           <div class="plot-labels"><span id="minimum-days">短</span><span id="average-days">历史均值</span><span id="maximum-days">长</span></div>
         </div>
         <dl class="recovery-facts">
-          <div><dt>预计日期</dt><dd id="estimated-date">${escapeHtml(player.expectedReturn || '—')}</dd></div>
+          <div><dt>恢复信息</dt><dd id="estimated-date">${escapeHtml(player.expectedReturn || '—')}</dd></div>
           <div><dt>历史样本</dt><dd id="sample-size">—</dd></div>
           <div><dt>平均缺阵</dt><dd id="average-value">—</dd></div>
         </dl>
@@ -106,9 +106,9 @@ function updateIdentity(profile) {
   if (!profile) return;
   player = {
     ...player,
-    name: profile.name || player.name,
-    team: profile.team_name || player.team,
-    position: profile.position || player.position,
+    name: player.name || profile.name,
+    team: player.team || profile.team_name,
+    position: player.position || profile.position,
     headshot_url: profile.headshot_url || player.headshot_url,
   };
   sessionStorage.setItem('injury-player', JSON.stringify(player));
@@ -184,10 +184,10 @@ async function loadEvidence() {
 
   try {
     const [profileResponse, historyResponse] = await Promise.all([
-      fetch(`${apiBase}/api/player-search?${profileParams}`),
+      id.startsWith('fpl_') ? Promise.resolve(null) : fetch(`${apiBase}/api/player-search?${profileParams}`),
       fetch(`${apiBase}/api/history?${historyParams}`),
     ]);
-    const [profilePayload, historyPayload] = await Promise.all([profileResponse.json(), historyResponse.json()]);
+    const [profilePayload, historyPayload] = await Promise.all([profileResponse ? profileResponse.json() : {}, historyResponse.json()]);
     const profiles = Array.isArray(profilePayload.data) ? profilePayload.data : [];
     updateIdentity(profiles[0]);
 
