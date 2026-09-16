@@ -44,6 +44,8 @@ async function history(url, env, origin) {
   const player = (url.searchParams.get('player') || '').trim();
   if (!player) return json({ error: 'player is required' }, 400, origin);
   const limit = limitFrom(url);
+  const abbreviated = player.match(/^(?:[A-Z]\.)+\s+(.+)$/i);
+  const playerPattern = abbreviated ? `%${abbreviated[1]}%` : `%${player}%`;
   const result = await env.injury_history.prepare(`
     SELECT season, injury_type, date_from, date_until, days_missed, games_missed,
            player_name, player_age, player_position, club, league
@@ -51,7 +53,7 @@ async function history(url, env, origin) {
     WHERE player_name LIKE ? COLLATE NOCASE
     ORDER BY date_from DESC
     LIMIT ?
-  `).bind(`%${player}%`, limit).all();
+  `).bind(playerPattern, limit).all();
   return json({ query: { player, limit }, results: result.results }, 200, origin);
 }
 
@@ -111,7 +113,26 @@ export default {
       return apiFootball(`/injuries?league=${encodeURIComponent(league)}&season=${encodeURIComponent(season)}`, env, origin);
     }
     if (url.pathname === '/api/absences') {
-      return bigBalls('/v1/injuries?league=epl', env, origin);
+      return bigBalls('/v1/injuries?sport=football&league=epl', env, origin);
+    }
+    if (url.pathname === '/api/standings') {
+      return bigBalls('/v1/standings?sport=football&league=epl', env, origin);
+    }
+    if (url.pathname === '/api/teams') {
+      return bigBalls('/v1/teams?sport=football', env, origin);
+    }
+    if (url.pathname === '/api/player-search') {
+      const name = url.searchParams.get('name');
+      if (!name) return json({ error: 'player name required' }, 400, origin);
+      return bigBalls(`/v1/players?name=${encodeURIComponent(name)}`, env, origin);
+    }
+    if (url.pathname === '/api/players') {
+      return bigBalls('/v1/players?sport=football&league=epl&limit=200', env, origin);
+    }
+    if (url.pathname === '/api/absence-player') {
+      const player = url.searchParams.get('id');
+      if (!player) return json({ error: 'player id required' }, 400, origin);
+      return bigBalls(`/v1/players/${encodeURIComponent(player)}/injury`, env, origin);
     }
     if (url.pathname === '/api/player') {
       const player = url.searchParams.get('id');

@@ -43,6 +43,8 @@ body>footer{background:#fff}
 .loading-state span{width:16px;height:16px;border:2px solid #c8d8ea;border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite}
 .loading-inline{padding:24px 0;color:var(--muted);font-size:.8rem}
 .warning-dot{background:#e3a33c!important}
+.severity.unknown{background:#f0f2f5;color:#667386}
+.coverage-card{display:flex;min-height:205px;flex-direction:column;align-items:center;justify-content:center;text-align:center}.coverage-card strong{font-size:2.5rem;color:var(--blue)}.coverage-card span{font-weight:700}.coverage-card small{max-width:220px;margin-top:8px;color:var(--muted)}
 .missing-player{max-width:620px;margin:60px auto;text-align:center}
 .missing-player h1{font-size:2rem}
 .missing-player p{color:var(--muted)}

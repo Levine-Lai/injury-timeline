@@ -23,7 +23,7 @@ function injuryTerm(reason='') {
   return terms.find(term => lower.includes(term)) || reason.split(/[,(\-/]/)[0].trim() || 'injury';
 }
 
-function severityLabel(value) { return value === 'high' ? '高风险' : value === 'medium' ? '中等' : '轻微'; }
+function severityLabel(value) { return value === 'high' ? '高风险' : value === 'medium' ? '中等' : value === 'low' ? '轻微' : '待确认'; }
 
 function initialPage() {
   const root = document.querySelector('#player-page');
