@@ -91,7 +91,7 @@ async function teamBadge(url, origin) {
 
 async function fplInjuries(request, env, origin, ctx) {
   const cache = caches.default;
-  const cacheKey = new Request(new URL('/__cache/fpl-injuries', request.url), { method: 'GET' });
+  const cacheKey = new Request(new URL('/__cache/v2/fpl-injuries', request.url), { method: 'GET' });
   const cached = await cache.match(cacheKey);
   if (cached) return cached;
   const response = await fetch(FPL_BOOTSTRAP, {
@@ -134,7 +134,7 @@ async function fplInjuries(request, env, origin, ctx) {
         news_added: player.news_added,
         chance_next_round: player.chance_of_playing_next_round,
         chance_this_round: player.chance_of_playing_this_round,
-        photo: photoCode ? `https://resources.premierleague.com/premierleague/photos/players/110x140/p${photoCode}.png` : null,
+        photo: photoCode ? `https://resources.premierleague.com/premierleague/photos/players/250x250/p${photoCode}.png` : null,
       };
     });
   const updatedAt = players.map(player => player.news_added).filter(Boolean).sort().at(-1) || null;

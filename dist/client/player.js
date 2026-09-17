@@ -26,8 +26,14 @@ function initials(name = '') {
 
 function avatarMarkup(person, className = 'detail-avatar') {
   const image = safeImage(person.headshot_url || person.photo || person.image || '');
-  if (image) return `<span class="${className}"><img src="${escapeHtml(image)}" alt="${escapeHtml(person.name || person.player_name)}" /></span>`;
+  if (image) return `<span class="${className}"><img src="${escapeHtml(image)}" alt="${escapeHtml(person.name || person.player_name)}" data-fallback="${escapeHtml(person.initials || initials(person.name || person.player_name))}" /></span>`;
   return `<span class="${className}" aria-hidden="true">${escapeHtml(person.initials || initials(person.name || person.player_name))}</span>`;
+}
+
+function bindImageFallbacks(root = document) {
+  root.querySelectorAll('img[data-fallback]').forEach(image => image.addEventListener('error', () => {
+    image.parentElement.textContent = image.dataset.fallback;
+  }, {once:true}));
 }
 
 function display(value, fallback = '—') {
@@ -103,6 +109,7 @@ function initialPage() {
       <div class="similar-list" id="case-table"><div class="loading-inline">读取中</div></div>
     </section>
     <p class="player-source">实时状态：${id.startsWith('fpl_') ? 'Fantasy Premier League' : 'Big Balls Sports'} · 历史样本：European Football Injuries 2020–2025</p>`;
+  bindImageFallbacks(root);
   return true;
 }
 
@@ -117,6 +124,7 @@ function updateIdentity(profile) {
   };
   sessionStorage.setItem('injury-player', JSON.stringify(player));
   document.querySelector('#identity-panel').querySelector('.detail-avatar').outerHTML = avatarMarkup(player);
+  bindImageFallbacks(document.querySelector('#identity-panel'));
   document.querySelector('#player-position').textContent = displayPosition(player.position);
   document.querySelector('#player-team').textContent = display(player.team);
 }
@@ -147,6 +155,7 @@ function renderCases(rows, hasInjuryType) {
       <time>${formatDate(row.date_from)}</time>
       <strong>${row.days_missed ?? '—'} 天</strong>
     </article>`).join('');
+  bindImageFallbacks(table);
 }
 
 function addDays(dateValue, days) {
