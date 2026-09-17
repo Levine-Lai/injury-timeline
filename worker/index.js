@@ -20,6 +20,10 @@ function limitFrom(url, fallback = 20, maximum = 100) {
   return Number.isFinite(value) ? Math.min(Math.max(value, 1), maximum) : fallback;
 }
 
+function normalizePlayerName(value = '') {
+  return String(value).trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
 async function apiFootball(path, env, origin) {
   if (!env.API_FOOTBALL_KEY) return json({ error: 'API_FOOTBALL_KEY is not configured' }, 503, origin);
   const response = await fetch(`${API_ORIGIN}${path}`, {
@@ -59,13 +63,19 @@ async function teamBadge(url, origin) {
   });
 }
 
-async function fplInjuries(request, origin) {
+async function fplInjuries(request, env, origin) {
   const response = await fetch(FPL_BOOTSTRAP, {
     headers: { Accept: 'application/json', 'User-Agent': 'InjuryTimeline/1.0' },
     cf: { cacheTtl: 900, cacheEverything: true },
   });
   if (!response.ok) return json({ error: 'FPL data unavailable' }, response.status, origin);
   const payload = await response.json();
+  const identityRows = await env.injury_history.prepare(`
+    SELECT external_id, player_id
+    FROM player_source_ids
+    WHERE source = 'fpl'
+  `).all();
+  const historyIds = new Map((identityRows.results || []).map(row => [String(row.external_id), row.player_id]));
   const teams = new Map((payload.teams || []).map(team => [team.id, team]));
   const positions = new Map((payload.element_types || []).map(position => [position.id, position]));
   const players = (payload.elements || [])
@@ -77,6 +87,7 @@ async function fplInjuries(request, origin) {
       return {
         id: `fpl_${player.id}`,
         fpl_id: player.id,
+        history_player_id: historyIds.get(String(player.id)) || null,
         name: [player.first_name, player.second_name].filter(Boolean).join(' '),
         display_name: player.web_name,
         team_id: player.team,
@@ -104,12 +115,34 @@ async function fplInjuries(request, origin) {
 
 async function history(url, env, origin) {
   const player = (url.searchParams.get('player') || '').trim();
-  if (!player) return json({ error: 'player is required' }, 400, origin);
+  let playerId = Number.parseInt(url.searchParams.get('player_id') || '', 10);
+  if (!Number.isFinite(playerId) && !player) return json({ error: 'player_id or player is required' }, 400, origin);
   const limit = limitFrom(url);
+  if (!Number.isFinite(playerId) && player) {
+    const identity = await env.injury_history.prepare(`
+      SELECT player_id
+      FROM player_aliases
+      WHERE normalized_alias = ?
+      ORDER BY is_verified DESC, confidence DESC, id ASC
+      LIMIT 1
+    `).bind(normalizePlayerName(player)).first();
+    if (identity?.player_id) playerId = Number(identity.player_id);
+  }
+  if (Number.isFinite(playerId)) {
+    const result = await env.injury_history.prepare(`
+      SELECT id, player_id, season, injury_type, date_from, date_until, days_missed, games_missed,
+             player_name, player_age, player_position, club, league
+      FROM injury_events
+      WHERE player_id = ?
+      ORDER BY date_from DESC
+      LIMIT ?
+    `).bind(playerId, limit).all();
+    return json({ query: { player_id: playerId, player: player || null, limit }, results: result.results }, 200, origin);
+  }
   const abbreviated = player.match(/^(?:[A-Z]\.)+\s+(.+)$/i);
   const playerPattern = abbreviated ? `%${abbreviated[1]}%` : `%${player}%`;
   const result = await env.injury_history.prepare(`
-    SELECT season, injury_type, date_from, date_until, days_missed, games_missed,
+    SELECT id, player_id, season, injury_type, date_from, date_until, days_missed, games_missed,
            player_name, player_age, player_position, club, league
     FROM injury_events
     WHERE player_name LIKE ? COLLATE NOCASE
@@ -178,7 +211,7 @@ export default {
       return bigBalls('/v1/injuries?sport=football&league=epl', env, origin);
     }
     if (url.pathname === '/api/team-badge') return teamBadge(url, origin);
-    if (url.pathname === '/api/fpl-injuries') return fplInjuries(request, origin);
+    if (url.pathname === '/api/fpl-injuries') return fplInjuries(request, env, origin);
     if (url.pathname === '/api/standings') {
       return bigBalls('/v1/standings?sport=football&league=epl', env, origin);
     }

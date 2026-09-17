@@ -184,6 +184,7 @@ function applyStats(stats, hasInjuryType) {
 async function loadEvidence() {
   const term = injuryTerm(player.injury);
   const historyParams = new URLSearchParams({player: player.name, limit: '20'});
+  if (player.history_player_id) historyParams.set('player_id', player.history_player_id);
   const profileParams = new URLSearchParams({name: player.name});
 
   try {
