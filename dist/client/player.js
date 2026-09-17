@@ -69,14 +69,6 @@ function formatDate(value) {
   return date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString('zh-CN') : '—';
 }
 
-function officialAssessment(person) {
-  const injury = display(person.injury, '伤情未明确');
-  const chance = Number(person.chance_next_round);
-  const hasChance = person.chance_next_round !== null && person.chance_next_round !== undefined && Number.isFinite(chance);
-  if (person.status === 'doubtful' && hasChance) return `${injury} · 下轮出场概率 ${chance}%`;
-  return `${injury} · ${display(person.expectedReturn, '复出时间未定')}`;
-}
-
 function initialPage() {
   const root = document.querySelector('#player-page');
   if (!player) {
@@ -94,11 +86,6 @@ function initialPage() {
         <div><dt>受伤日期</dt><dd>${formatDate(player.injuryDate)}</dd></div>
         <div><dt>当前状态</dt><dd class="status-active ${player.status === 'doubtful' ? 'status-doubtful' : ''}">${escapeHtml(player.availability || '伤停')}</dd></div>
       </dl>
-      <div class="official-update">
-        <span>FPL 官方更新</span>
-        <strong>${escapeHtml(officialAssessment(player))}</strong>
-        <time>${formatDate(player.reportedDate)}</time>
-      </div>
     </section>
 
     <section class="recovery-panel">
