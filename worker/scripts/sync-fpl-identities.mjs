@@ -5,6 +5,12 @@ import { join } from 'node:path';
 
 const database = 'injury-history';
 const wrangler = join(process.cwd(), 'node_modules', 'wrangler', 'bin', 'wrangler.js');
+const apply = process.argv.includes('--apply');
+const maxWritesArgument = process.argv.find(argument => argument.startsWith('--max-writes='));
+const maxWrites = Number.parseInt(maxWritesArgument?.split('=')[1] || '10000', 10);
+if (!Number.isFinite(maxWrites) || maxWrites < 1 || maxWrites > 20000) {
+  throw new Error('--max-writes must be between 1 and 20000');
+}
 
 function normalize(value = '') {
   return String(value).trim().replace(/\s+/g, ' ').toLowerCase();
@@ -15,10 +21,19 @@ function sql(value = '') {
 }
 
 function d1Json(command) {
-  const output = execFileSync(process.execPath, [
-    wrangler, 'd1', 'execute', database, '--remote', '--command', command, '--json',
-  ], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
-  return JSON.parse(output)[0]?.results || [];
+  try {
+    const output = execFileSync(process.execPath, [
+      wrangler, 'd1', 'execute', database, '--remote', '--command', command, '--json',
+    ], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+    return JSON.parse(output)[0]?.results || [];
+  } catch (error) {
+    const detail = String(error?.stdout || error?.message || error);
+    if (detail.includes('free tier daily row')) {
+      console.error('D1 daily quota is unavailable. No changes were applied; wait for the UTC reset.');
+      process.exit(2);
+    }
+    throw error;
+  }
 }
 
 const historyPlayers = d1Json(`
@@ -28,7 +43,11 @@ const historyPlayers = d1Json(`
 const sourceRows = d1Json(`
   SELECT external_id, player_id FROM player_source_ids WHERE source = 'fpl'
 `);
+const aliasRows = d1Json(`
+  SELECT player_id, normalized_alias FROM player_aliases WHERE source = 'fpl'
+`);
 const sourceIds = new Map(sourceRows.map(row => [String(row.external_id), Number(row.player_id)]));
+const aliases = new Set(aliasRows.map(row => `${Number(row.player_id)}:${normalize(row.normalized_alias)}`));
 const byId = new Map(historyPlayers.map(row => [Number(row.id), row]));
 const byName = new Map();
 for (const row of historyPlayers) {
@@ -69,11 +88,16 @@ function candidateNames(player) {
   return [...new Set(candidates.map(normalize))];
 }
 
-const statements = ['PRAGMA foreign_keys = ON;'];
+const changes = [];
 let existing = 0;
 let exact = 0;
 let alias = 0;
 let created = 0;
+let updated = 0;
+
+function plan(cost, ...statements) {
+  changes.push({ cost, statements });
+}
 
 for (const player of payload.elements) {
   const externalId = String(player.id);
@@ -99,26 +123,48 @@ for (const player of payload.elements) {
 
   if (!match) {
     created += 1;
-    statements.push(`INSERT INTO players(canonical_name, normalized_name, current_club, current_position) VALUES (${sql(fullName)}, ${sql(normalized)}, ${sql(club)}, ${sql(position)});`);
-    statements.push(`INSERT OR IGNORE INTO player_aliases(player_id, alias, normalized_alias, source, confidence, is_verified) SELECT id, ${sql(fullName)}, ${sql(normalized)}, 'fpl', 1.0, 1 FROM players WHERE normalized_name = ${sql(normalized)} ORDER BY id DESC LIMIT 1;`);
-    statements.push(`INSERT OR IGNORE INTO player_source_ids(player_id, source, external_id) SELECT id, 'fpl', ${sql(externalId)} FROM players WHERE normalized_name = ${sql(normalized)} ORDER BY id DESC LIMIT 1;`);
+    plan(8,
+      `INSERT INTO players(canonical_name, normalized_name, current_club, current_position) VALUES (${sql(fullName)}, ${sql(normalized)}, ${sql(club)}, ${sql(position)});`,
+      `INSERT INTO player_aliases(player_id, alias, normalized_alias, source, confidence, is_verified) SELECT id, ${sql(fullName)}, ${sql(normalized)}, 'fpl', 1.0, 1 FROM players WHERE normalized_name = ${sql(normalized)} ORDER BY id DESC LIMIT 1;`,
+      `INSERT INTO player_source_ids(player_id, source, external_id) SELECT id, 'fpl', ${sql(externalId)} FROM players WHERE normalized_name = ${sql(normalized)} ORDER BY id DESC LIMIT 1;`,
+    );
   } else {
-    statements.push(`INSERT OR IGNORE INTO player_aliases(player_id, alias, normalized_alias, source, confidence, is_verified) VALUES (${Number(match.id)}, ${sql(fullName)}, ${sql(normalized)}, 'fpl', ${confidence}, ${confidence === 1 ? 1 : 0});`);
-    statements.push(`INSERT OR IGNORE INTO player_source_ids(player_id, source, external_id) VALUES (${Number(match.id)}, 'fpl', ${sql(externalId)});`);
-    statements.push(`UPDATE players SET current_club = ${sql(club)}, current_position = ${sql(position)}, updated_at = CURRENT_TIMESTAMP WHERE id = ${Number(match.id)};`);
+    const playerId = Number(match.id);
+    if (!aliases.has(`${playerId}:${normalized}`)) {
+      plan(3, `INSERT INTO player_aliases(player_id, alias, normalized_alias, source, confidence, is_verified) VALUES (${playerId}, ${sql(fullName)}, ${sql(normalized)}, 'fpl', ${confidence}, ${confidence === 1 ? 1 : 0});`);
+    }
+    if (!sourceIds.has(externalId)) {
+      plan(3, `INSERT INTO player_source_ids(player_id, source, external_id) VALUES (${playerId}, 'fpl', ${sql(externalId)});`);
+    }
+    if (String(match.current_club || '') !== club || String(match.current_position || '') !== position) {
+      updated += 1;
+      plan(1, `UPDATE players SET current_club = ${sql(club)}, current_position = ${sql(position)}, updated_at = CURRENT_TIMESTAMP WHERE id = ${playerId} AND (current_club IS NOT ${sql(club)} OR current_position IS NOT ${sql(position)});`);
+    }
   }
 }
 
-statements.push('PRAGMA optimize;');
-const temporaryDirectory = mkdtempSync(join(tmpdir(), 'injury-fpl-identities-'));
-const sqlFile = join(temporaryDirectory, 'sync.sql');
-try {
-  writeFileSync(sqlFile, statements.join('\n'), 'utf8');
-  execFileSync(process.execPath, [wrangler, 'd1', 'execute', database, '--remote', '--file', sqlFile], {
-    encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'], maxBuffer: 16 * 1024 * 1024,
-  });
-} finally {
-  rmSync(temporaryDirectory, { recursive: true, force: true });
+const estimatedWrites = changes.reduce((total, change) => total + change.cost, 0);
+const summary = { mode: apply ? 'apply' : 'dry-run', total: payload.elements.length, existing, exact, alias, created, updated, estimated_writes: estimatedWrites, max_writes: maxWrites };
+if (!apply) {
+  console.log(JSON.stringify(summary));
+  console.log('Dry run only. Use --apply after reviewing estimated_writes.');
+  process.exit(0);
+}
+if (estimatedWrites > maxWrites) {
+  throw new Error(`Refusing sync: estimated ${estimatedWrites} rows written exceeds the ${maxWrites} safety budget`);
+}
+if (changes.length) {
+  const statements = ['PRAGMA foreign_keys = ON;', ...changes.flatMap(change => change.statements)];
+  const temporaryDirectory = mkdtempSync(join(tmpdir(), 'injury-fpl-identities-'));
+  const sqlFile = join(temporaryDirectory, 'sync.sql');
+  try {
+    writeFileSync(sqlFile, statements.join('\n'), 'utf8');
+    execFileSync(process.execPath, [wrangler, 'd1', 'execute', database, '--remote', '--file', sqlFile], {
+      encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'], maxBuffer: 16 * 1024 * 1024,
+    });
+  } finally {
+    rmSync(temporaryDirectory, { recursive: true, force: true });
+  }
 }
 
-console.log(JSON.stringify({ total: payload.elements.length, existing, exact, alias, created }));
+console.log(JSON.stringify(summary));
