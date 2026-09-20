@@ -6,7 +6,7 @@
   <meta name="description" content="按球队查看英超球员伤病、预计复出时间与出场概率。" />
   <title>伤停线｜英超伤病数据</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231769d2'/%3E%3Cpath d='M13 34h10l5-13 8 25 6-12h9' fill='none' stroke='white' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="./styles.css?v=20260920-1" />
+  <link rel="stylesheet" href="./styles.css?v=20260920-2" />
 </head>
 <body>
   <header class="site-header injury-header">
@@ -18,6 +18,12 @@
   </header>
 
   <main id="top" class="injury-home">
+    <nav class="data-view-tabs" aria-label="数据视图">
+      <button class="active" data-view="current" aria-selected="true">当前伤停</button>
+      <button data-view="archive" aria-selected="false">历史档案</button>
+    </nav>
+
+    <div id="current-view" class="data-view">
     <section class="team-browser" aria-labelledby="team-filter-title">
       <div class="section-heading compact-heading">
         <h1 id="team-filter-title">球队</h1>
@@ -34,10 +40,46 @@
       <div class="injury-columns" aria-hidden="true"><span>球员</span><span>伤病</span><span>状态 / 预计复出</span><span>更新</span></div>
       <div class="injury-list" id="injury-list" aria-live="polite"></div>
     </section>
+    </div>
+
+    <section id="archive-view" class="data-view archive-view" hidden aria-labelledby="archive-title">
+      <div class="archive-head">
+        <div><h1 id="archive-title">历史伤病档案</h1><strong id="archive-total">—</strong></div>
+        <form class="archive-search" id="archive-search">
+          <label class="sr-only" for="archive-query">搜索球员姓名</label>
+          <input id="archive-query" type="search" minlength="2" placeholder="搜索球员姓名" autocomplete="off" />
+          <button type="submit">查询</button>
+        </form>
+        <label class="archive-league-label">联赛
+          <select id="archive-league">
+            <option value="">五大联赛</option>
+            <option value="Premier League">英超</option>
+            <option value="La Liga">西甲</option>
+            <option value="Bundesliga">德甲</option>
+            <option value="Serie A">意甲</option>
+            <option value="Ligue 1">法甲</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="archive-regions" id="archive-regions" aria-label="身体部位"></div>
+
+      <section class="archive-panel" aria-labelledby="archive-types-title">
+        <div class="archive-panel-head"><h2 id="archive-types-title">伤病类型</h2><span id="archive-type-count">—</span></div>
+        <div class="archive-types" id="archive-types"></div>
+      </section>
+
+      <section class="archive-panel archive-record-panel" aria-labelledby="archive-record-title">
+        <div class="archive-panel-head"><h2 id="archive-record-title">案例记录</h2><span id="archive-record-count">选择伤病类型</span></div>
+        <div class="archive-columns" aria-hidden="true"><span>球员</span><span>俱乐部 / 位置</span><span>伤病周期</span><span>缺阵</span><span>联赛</span></div>
+        <div id="archive-records" aria-live="polite"><div class="empty-state">选择伤病类型查看案例</div></div>
+      </section>
+    </section>
   </main>
 
-  <footer><span>数据：Fantasy Premier League</span><span>球员状态不等同于俱乐部医疗报告</span></footer>
+  <footer><span>当前：Fantasy Premier League　历史：European Football Injuries 2020–2025</span><span>历史档案仅收录已结束且有缺阵天数的记录</span></footer>
   <script src="./config.js?v=20260916-3"></script>
   <script src="./app.js?v=20260916-6"></script>
+  <script src="./archive.js?v=20260920-1"></script>
 </body>
 </html>

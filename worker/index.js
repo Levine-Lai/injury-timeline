@@ -99,6 +99,100 @@ const INJURY_LABELS = {
   knock: ['Knock', 'minor knock'],
 };
 
+const ARCHIVE_CATEGORIES = [
+  { id: 'knee', label: '膝部', pattern: /knee|meniscus|cruciate|acl|patell|collateral/i },
+  { id: 'thigh', label: '大腿与腿筋', pattern: /hamstring|thigh|quadriceps/i },
+  { id: 'hip_groin', label: '髋部与腹股沟', pattern: /hip|groin|adductor|pubalgia|pubic/i },
+  { id: 'lower_leg', label: '小腿与跟腱', pattern: /calf|shin|fibula|lower leg|achilles/i },
+  { id: 'ankle', label: '脚踝', pattern: /ankle/i },
+  { id: 'foot', label: '足部', pattern: /foot|metatarsal|toe|heel|plantar/i },
+  { id: 'back', label: '背部与脊柱', pattern: /back|lumbago|lumbar|spine|vertebra/i },
+  { id: 'upper_limb', label: '肩臂与手部', pattern: /shoulder|arm|elbow|wrist|hand|forearm|metacarpal/i },
+  { id: 'head_neck', label: '头颈部', pattern: /head|concussion|nose|facial|eye socket|neck/i },
+  { id: 'torso', label: '胸腹部', pattern: /rib|chest|abdominal|abdomen/i },
+  { id: 'muscle_unspecified', label: '肌肉（部位未明）', pattern: /muscle|muscular|strain/i },
+  { id: 'other_trauma', label: '其他创伤', pattern: /ligament|tendon|capsular|knock|bruise|fracture|broken|surgery|inflammation|wound|tear|injury|problems/i },
+];
+
+const NON_INJURY_LABELS = /corona|covid|virus|\bill\b|flu|influenza|fever|cold|infection|tonsillitis|quarantine|rest|fitness|stomach|food poisoning|allergy/i;
+
+const ARCHIVE_INJURY_NAMES = {
+  'Hamstring injury': '腿筋伤势',
+  'Hamstring muscle injury': '腿筋肌肉伤势',
+  'Hamstring strain': '腿筋拉伤',
+  'Muscle injury': '肌肉伤势',
+  'muscular problems': '肌肉问题',
+  'Muscle fatigue': '肌肉疲劳',
+  'Muscle strain': '肌肉拉伤',
+  'Torn muscle fiber': '肌纤维撕裂',
+  'Torn muscle bundle': '肌束撕裂',
+  'Knee injury': '膝部伤势',
+  'Knee problems': '膝部问题',
+  'Knee surgery': '膝部手术',
+  'Knee bruise': '膝部挫伤',
+  'Meniscus injury': '半月板伤势',
+  'Meniscus tear': '半月板撕裂',
+  'Cruciate ligament tear': '十字韧带撕裂',
+  'Cruciate ligament injury': '十字韧带伤势',
+  'Ankle injury': '脚踝伤势',
+  'Ankle problems': '脚踝问题',
+  'Ankle sprain': '脚踝扭伤',
+  'ankle sprain': '脚踝扭伤',
+  'Injury to the ankle': '脚踝伤势',
+  'Ankle surgery': '脚踝手术',
+  'Calf injury': '小腿伤势',
+  'Calf problems': '小腿问题',
+  'Calf muscle tear': '小腿肌肉撕裂',
+  'Achilles tendon problems': '跟腱问题',
+  'Achilles tendon rupture': '跟腱断裂',
+  'Thigh problems': '大腿伤势',
+  'Torn thigh muscle': '大腿肌肉撕裂',
+  'Adductor pain': '内收肌疼痛',
+  'Adductor injury': '内收肌伤势',
+  'Groin injury': '腹股沟伤势',
+  'Groin problems': '腹股沟问题',
+  'Groin surgery': '腹股沟手术',
+  'Hip injury': '髋部伤势',
+  'Hip problems': '髋部问题',
+  'Hip flexor problems': '髋屈肌问题',
+  'Foot injury': '足部伤势',
+  'Metatarsal fracture': '跖骨骨折',
+  'Toe injury': '脚趾伤势',
+  'Back problems': '背部问题',
+  'Back injury': '背部伤势',
+  'Lumbago': '腰痛',
+  'Shoulder injury': '肩部伤势',
+  'Hand injury': '手部伤势',
+  'Head injury': '头部伤势',
+  'concussion': '脑震荡',
+  'Leg injury': '腿部伤势',
+  'Dead leg': '大腿挫伤',
+  'Knock': '碰撞伤',
+  'minor knock': '轻微碰撞伤',
+  'bruise': '挫伤',
+};
+
+function archiveCategory(injuryType) {
+  if (!injuryType || NON_INJURY_LABELS.test(injuryType)) return null;
+  return ARCHIVE_CATEGORIES.find(category => category.pattern.test(injuryType)) || null;
+}
+
+function archiveTypeRow(row) {
+  const category = archiveCategory(row.injury_type);
+  if (!category) return null;
+  return {
+    injury_type: row.injury_type,
+    injury_label: ARCHIVE_INJURY_NAMES[row.injury_type] || row.injury_type,
+    category_id: category.id,
+    category_label: category.label,
+    cases: Number(row.cases || 0),
+    players: Number(row.players || 0),
+    average_days: Number(row.average_days || 0),
+    minimum_days: Number(row.minimum_days || 0),
+    maximum_days: Number(row.maximum_days || 0),
+  };
+}
+
 function injuryLabels(value) {
   const normalized = String(value || '').trim().toLowerCase();
   return INJURY_LABELS[normalized] || [value];
@@ -294,6 +388,106 @@ async function stats(url, env, origin) {
   return json({ query: { injury, position: position || null }, stats: result }, 200, origin);
 }
 
+async function archive(request, env, origin, ctx) {
+  const url = new URL(request.url);
+  const league = (url.searchParams.get('league') || '').trim();
+  const injury = (url.searchParams.get('injury') || '').trim();
+  const query = (url.searchParams.get('q') || '').trim().replace(/\s+/g, ' ');
+  const limit = limitFrom(url, 30, 50);
+  const offsetValue = Number.parseInt(url.searchParams.get('offset') || '', 10);
+  const offset = Number.isFinite(offsetValue) ? Math.max(offsetValue, 0) : 0;
+
+  if (query && query.length < 2) return json({ error: 'search query must contain at least 2 characters' }, 400, origin);
+
+  if (injury || query) {
+    const where = [
+      'date_until IS NOT NULL',
+      'days_missed IS NOT NULL',
+      'days_missed > 0',
+      "(? = '' OR league = ?)",
+    ];
+    const bindings = [league, league];
+    if (injury) {
+      where.push('injury_type = ?');
+      bindings.push(injury);
+    }
+    if (query) {
+      where.push('player_name LIKE ? COLLATE NOCASE');
+      bindings.push(`%${query}%`);
+    }
+    const result = await env.injury_history.prepare(`
+      SELECT id, player_id, season, injury_type, date_from, date_until, days_missed,
+             games_missed, player_name, player_age, player_position, club, league
+      FROM injury_events
+      WHERE ${where.join('\n        AND ')}
+      ORDER BY date_from DESC, id DESC
+      LIMIT ? OFFSET ?
+    `).bind(...bindings, limit, offset).all();
+    return json({
+      query: { injury: injury || null, player: query || null, league: league || null, limit, offset },
+      results: result.results || [],
+    }, 200, origin);
+  }
+
+  const cache = caches.default;
+  const cacheUrl = new URL(`/__cache/v1/history-archive?league=${encodeURIComponent(league)}`, request.url);
+  const cacheKey = new Request(cacheUrl, { method: 'GET' });
+  const cached = await cache.match(cacheKey);
+  if (cached) return cached;
+
+  const [typesResult, totalResult] = await Promise.all([
+    env.injury_history.prepare(`
+      SELECT injury_type,
+             COUNT(*) AS cases,
+             COUNT(DISTINCT COALESCE(CAST(player_id AS TEXT), lower(player_name))) AS players,
+             ROUND(AVG(days_missed), 1) AS average_days,
+             MIN(days_missed) AS minimum_days,
+             MAX(days_missed) AS maximum_days
+      FROM injury_events
+      WHERE date_until IS NOT NULL
+        AND days_missed IS NOT NULL
+        AND days_missed > 0
+        AND (? = '' OR league = ?)
+      GROUP BY injury_type
+      ORDER BY cases DESC
+    `).bind(league, league).all(),
+    env.injury_history.prepare(`
+      SELECT COUNT(*) AS cases,
+             COUNT(DISTINCT COALESCE(CAST(player_id AS TEXT), lower(player_name))) AS players
+      FROM injury_events
+      WHERE date_until IS NOT NULL
+        AND days_missed IS NOT NULL
+        AND days_missed > 0
+        AND (? = '' OR league = ?)
+    `).bind(league, league).first(),
+  ]);
+
+  const types = (typesResult.results || []).map(archiveTypeRow).filter(Boolean);
+  const categories = ARCHIVE_CATEGORIES.map(category => {
+    const categoryTypes = types.filter(type => type.category_id === category.id);
+    return {
+      id: category.id,
+      label: category.label,
+      cases: categoryTypes.reduce((sum, type) => sum + type.cases, 0),
+      type_count: categoryTypes.length,
+    };
+  }).filter(category => category.cases > 0);
+  const classifiedCases = types.reduce((sum, type) => sum + type.cases, 0);
+  const response = json({
+    data: { categories, types },
+    meta: {
+      league: league || null,
+      completed_cases: Number(totalResult?.cases || 0),
+      classified_cases: classifiedCases,
+      players: Number(totalResult?.players || 0),
+      source: 'European Football Injuries 2020–2025',
+    },
+  }, 200, origin);
+  response.headers.set('cache-control', 'public, max-age=86400');
+  ctx.waitUntil(cache.put(cacheKey, response.clone()));
+  return response;
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -354,6 +548,10 @@ export default {
     }
     if (url.pathname === '/api/history/stats') {
       try { return await stats(url, env, origin); }
+      catch (_error) { return json({ error: 'history database temporarily unavailable' }, 503, origin); }
+    }
+    if (url.pathname === '/api/history/archive') {
+      try { return await archive(request, env, origin, ctx); }
       catch (_error) { return json({ error: 'history database temporarily unavailable' }, 503, origin); }
     }
     return json({
