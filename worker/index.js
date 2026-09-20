@@ -2,6 +2,60 @@ const API_ORIGIN = 'https://v3.football.api-sports.io';
 const BIGBALLS_ORIGIN = 'https://api.bigballsdata.com';
 const FPL_BOOTSTRAP = 'https://fantasy.premierleague.com/api/bootstrap-static/';
 
+const MEDICAL_EVIDENCE = {
+  fpl_6: {
+    episode_id: 'inj-saliba-2026-07-23',
+    player_id: 'fpl_6',
+    current: {
+      classification_code: 'BACK-UNSPECIFIED',
+      body_region: '背部',
+      tissue: null,
+      pathology: null,
+      grade: null,
+      treatment: null,
+      precision: 'region_only',
+      precision_label: '仅部位级',
+      club_report_status: '未匹配到俱乐部组织级诊断',
+      can_predict: false,
+      assessment: '公开信息只能确认背部伤势，无法区分肌肉、椎间盘、骨应力或其他病理。',
+    },
+    claims: [{
+      claim_id: 'claim-saliba-back-fpl',
+      field: 'body_region',
+      value: '背部',
+      published_at: '2026-07-23T12:01:23.289376Z',
+      source_name: 'Fantasy Premier League',
+      source_type: 'league_fantasy',
+      evidence: '标记为背部伤势，复出日期未知。',
+      confidence: 'basic',
+      source_url: 'https://fantasy.premierleague.com/',
+    }],
+    verified_history: {
+      episode_id: 'inj-saliba-calf-2025',
+      classification_code: 'CALF-UNSPECIFIED',
+      diagnosis: '小腿伤势',
+      status: 'closed',
+      outcome: '缺席4场后首发复出',
+      events: [
+        {
+          date: '2025-12-12',
+          stage: '接近复出',
+          detail: '阿森纳赛前信息确认 Saliba 正接近从小腿伤势中复出。',
+          source_name: 'Arsenal.com',
+          source_url: 'https://www.arsenal.com/news/preview-arsenal-v-wolves-aqlcz7A6u2M5',
+        },
+        {
+          date: '2025-12-13',
+          stage: '正式复出',
+          detail: '进入首发阵容；俱乐部确认此前因小腿伤势缺席4场。',
+          source_name: 'Arsenal.com',
+          source_url: 'https://www.arsenal.com/news/team-news-saliba-rice-and-timber-back-for-wolves-aNL307w3J79s',
+        },
+      ],
+    },
+  },
+};
+
 function json(value, status = 200, origin = '*') {
   return new Response(JSON.stringify(value), {
     status,
@@ -87,6 +141,14 @@ async function teamBadge(url, origin) {
       'access-control-allow-origin': origin,
     },
   });
+}
+
+function medicalEvidence(url, origin) {
+  const playerId = (url.searchParams.get('player_id') || '').trim();
+  if (!playerId) return json({ error: 'player_id is required' }, 400, origin);
+  const evidence = MEDICAL_EVIDENCE[playerId];
+  if (!evidence) return json({ data: null }, 404, origin);
+  return json({ data: evidence }, 200, origin);
 }
 
 async function fplInjuries(request, env, origin, ctx) {
@@ -253,6 +315,7 @@ export default {
     }
     if (url.pathname === '/api/team-badge') return teamBadge(url, origin);
     if (url.pathname === '/api/fpl-injuries') return fplInjuries(request, env, origin, ctx);
+    if (url.pathname === '/api/medical-evidence') return medicalEvidence(url, origin);
     if (url.pathname === '/api/standings') {
       return bigBalls('/v1/standings?sport=football&league=epl', env, origin);
     }

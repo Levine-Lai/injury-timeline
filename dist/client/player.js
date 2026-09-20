@@ -1,6 +1,7 @@
 const apiBase = (window.INJURY_API_BASE || '.').replace(/\/$/, '');
 const id = new URLSearchParams(location.search).get('id') || '';
 let player = null;
+let predictionBlocked = false;
 
 try {
   const stored = JSON.parse(sessionStorage.getItem('injury-player') || 'null');
@@ -69,6 +70,31 @@ function formatDate(value) {
   return date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString('zh-CN') : '—';
 }
 
+function normalizeLivePlayer(row) {
+  const injuryNames = {
+    'Back injury':'背部伤势','Calf injury':'小腿伤势','Hamstring injury':'腿筋伤势',
+    'Knee injury':'膝部伤势','Ankle injury':'脚踝伤势','Muscular injury':'肌肉伤势',
+    'Unspecified injury':'伤情未明确',
+  };
+  const positionNames = {Goalkeeper:'门将',Defender:'后卫',Midfielder:'中场',Forward:'前锋'};
+  const [rawInjury = 'Unspecified injury', detail = ''] = String(row.news || '').split(/\s+-\s+/, 2);
+  const chance = detail.match(/(\d+)% chance of playing/i);
+  const expectedReturn = /Unknown return date/i.test(detail)
+    ? '复出时间未定'
+    : chance ? `下轮出场概率 ${chance[1]}%` : (detail || '复出时间未定');
+  return {
+    ...row,
+    name: row.name || row.display_name,
+    initials: initials(row.name || row.display_name),
+    position: positionNames[row.position] || row.position,
+    injury: injuryNames[rawInjury] || rawInjury,
+    expectedReturn,
+    availability: row.status === 'd' ? '出场存疑' : '伤停',
+    status: row.status === 'd' ? 'doubtful' : 'injured',
+    reportedDate: row.news_added,
+  };
+}
+
 function initialPage() {
   const root = document.querySelector('#player-page');
   if (!player) {
@@ -87,6 +113,8 @@ function initialPage() {
         <div><dt>当前状态</dt><dd class="status-active ${player.status === 'doubtful' ? 'status-doubtful' : ''}">${escapeHtml(player.availability || '伤停')}</dd></div>
       </dl>
     </section>
+
+    <div id="medical-evidence-slot"></div>
 
     <section class="recovery-panel">
       <div class="section-title"><h2>恢复预测</h2><strong id="recovery-window">数据不足</strong></div>
@@ -111,6 +139,62 @@ function initialPage() {
     <p class="player-source">实时状态：${id.startsWith('fpl_') ? 'Fantasy Premier League' : 'Big Balls Sports'} · 历史样本：European Football Injuries 2020–2025</p>`;
   bindImageFallbacks(root);
   return true;
+}
+
+function renderPredictionUnavailable() {
+  predictionBlocked = true;
+  document.querySelector('#recovery-window').textContent = '暂不预测';
+  document.querySelector('#estimated-date').textContent = '缺少组织级诊断';
+  document.querySelector('#sample-size').textContent = '—';
+  document.querySelector('#average-value').textContent = '—';
+  document.querySelector('#minimum-days').textContent = '部位级';
+  document.querySelector('#average-days').textContent = '需要诊断';
+  document.querySelector('#maximum-days').textContent = '不推测';
+  document.querySelector('#recovery-plot').classList.add('prediction-unavailable');
+}
+
+function renderMedicalEvidence(evidence) {
+  if (!evidence?.current) return;
+  const current = evidence.current;
+  const history = evidence.verified_history;
+  const claim = evidence.claims?.[0];
+  const sourceUrl = safeImage(claim?.source_url || '');
+  const slot = document.querySelector('#medical-evidence-slot');
+  slot.innerHTML = `
+    <section class="evidence-panel">
+      <div class="section-title"><h2>伤情证据</h2><strong class="evidence-level">${escapeHtml(current.precision_label)}</strong></div>
+      <dl class="evidence-facts">
+        <div><dt>部位</dt><dd>${escapeHtml(display(current.body_region))}</dd></div>
+        <div><dt>组织</dt><dd>${escapeHtml(display(current.tissue, '未公开'))}</dd></div>
+        <div><dt>病理</dt><dd>${escapeHtml(display(current.pathology, '未公开'))}</dd></div>
+        <div><dt>治疗</dt><dd>${escapeHtml(display(current.treatment, '未公开'))}</dd></div>
+      </dl>
+      <div class="evidence-claim">
+        <time>${formatDate(claim?.published_at)}</time>
+        <div><strong>${escapeHtml(claim?.evidence || current.club_report_status)}</strong><p>${escapeHtml(current.assessment)}</p></div>
+        ${sourceUrl ? `<a href="${escapeHtml(sourceUrl)}" target="_blank" rel="noreferrer">${escapeHtml(claim.source_name)} ↗</a>` : ''}
+      </div>
+      ${history ? `
+        <div class="verified-episode">
+          <div class="verified-title"><span>已验证历史事件</span><strong>${escapeHtml(history.diagnosis)} · ${escapeHtml(history.outcome)}</strong></div>
+          ${history.events.map(event => `
+            <div class="evidence-event">
+              <time>${formatDate(event.date)}</time>
+              <span><strong>${escapeHtml(event.stage)}</strong><small>${escapeHtml(event.detail)}</small></span>
+              <a href="${escapeHtml(safeImage(event.source_url))}" target="_blank" rel="noreferrer">${escapeHtml(event.source_name)} ↗</a>
+            </div>`).join('')}
+        </div>` : ''}
+    </section>`;
+  if (!current.can_predict) renderPredictionUnavailable();
+}
+
+async function loadMedicalEvidence() {
+  try {
+    const response = await fetch(`${apiBase}/api/medical-evidence?player_id=${encodeURIComponent(id)}`);
+    if (!response.ok) return;
+    const payload = await response.json();
+    renderMedicalEvidence(payload.data);
+  } catch (_error) {}
 }
 
 function updateIdentity(profile) {
@@ -171,7 +255,7 @@ function applyStats(stats, hasInjuryType) {
   const average = Number(stats?.average_days_missed || 0);
   const minimum = Number(stats?.minimum_days_missed || 0);
   const maximum = Number(stats?.maximum_days_missed || 0);
-  if (!hasInjuryType || !sample || !average) return;
+  if (predictionBlocked || !hasInjuryType || !sample || !average) return;
 
   const low = Math.max(1, Math.round(average * .65));
   const high = Math.max(low, Math.round(average * 1.35));
@@ -227,5 +311,18 @@ async function loadEvidence() {
   }
 }
 
-if (initialPage()) loadEvidence();
+async function boot() {
+  if (!player && id.startsWith('fpl_')) {
+    try {
+      const response = await fetch(`${apiBase}/api/fpl-injuries`);
+      const payload = await response.json();
+      const livePlayer = payload?.data?.players?.find(row => String(row.id) === String(id));
+      if (livePlayer) player = normalizeLivePlayer(livePlayer);
+    } catch (_error) {}
+  }
+  if (!initialPage()) return;
+  await Promise.allSettled([loadEvidence(), loadMedicalEvidence()]);
+}
+
+void boot();
 
