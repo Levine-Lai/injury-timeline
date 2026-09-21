@@ -243,7 +243,7 @@
   async function loadCatalog() {
     regionRoot.innerHTML = '<div class="loading-state"><span></span>正在读取历史档案</div>';
     typeRoot.innerHTML = '';
-    const params = new URLSearchParams({ schema: '20260921-2' });
+    const params = new URLSearchParams({ schema: '20260921-3' });
     if (leagueSelect.value) params.set('league', leagueSelect.value);
     try {
       const response = await fetch(`${archiveApiBase}/api/history/archive?${params}`, {cache:'no-store', headers:{Accept:'application/json'}});
@@ -261,7 +261,7 @@
   }
 
   async function loadRecords({ type = null, query = '' } = {}) {
-    const params = new URLSearchParams({ limit: '50', schema: '20260921-2' });
+    const params = new URLSearchParams({ limit: '50', schema: '20260921-3' });
     if (leagueSelect.value) params.set('league', leagueSelect.value);
     if (type) type.raw_labels.forEach(label => params.append('injury', label));
     if (query) params.set('q', query);

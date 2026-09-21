@@ -340,21 +340,27 @@ Object.assign(ARCHIVE_INJURY_NAMES, {
 const CANONICAL_INJURIES = [
   { id: 'knee_unspecified', label: '膝部伤势（未明确）', aliases: ['Knee injury', 'Knee problems'] },
   { id: 'knee_bruise', label: '膝部挫伤', aliases: ['Knee bruise', 'Bruised knee'] },
-  { id: 'meniscus_injury', label: '半月板损伤', aliases: ['Meniscus injury', 'Meniscus damage', 'Meniscus irritation'] },
-  { id: 'knee_collateral_tear', label: '膝侧副韧带撕裂', aliases: ['Inner knee ligament tear', 'Knee medial ligament tear', 'Knee collateral ligament tear', 'Collateral ligament tear'] },
-  { id: 'hamstring_injury', label: '腿筋伤势', aliases: ['Hamstring injury', 'Hamstring muscle injury'] },
+  { id: 'cruciate_ligament_injury', label: '十字韧带伤病', aliases: ['Cruciate ligament tear', 'Cruciate ligament injury', 'Cruciate ligament surgery', 'Partial damage to the cruciate ligament', 'Cruciate ligament strain'] },
+  { id: 'meniscus_injury', label: '半月板伤病', aliases: ['Meniscus injury', 'Meniscus damage', 'Meniscus irritation', 'Meniscus tear', 'Tear of the lateral meniscus'] },
+  { id: 'patellar_tendon_injury', label: '髌腱伤病', aliases: ['Patellar tendon problems', 'Patellar tendon rupture', 'Patellar tendon irritation', 'Patellar tendon dislocation', 'Patellar tendon tear', 'Partial patellar tendon tear', 'Patellar tendinopathy syndrome'] },
+  { id: 'knee_collateral_injury', label: '膝侧副韧带伤病', aliases: ['Collateral ligament injury', 'Inner knee ligament tear', 'Knee medial ligament tear', 'Inner ligament stretch of the knee', 'Torn lateral knee ligament', 'Knee collateral ligament strain', 'Knee collateral ligament tear', 'Collateral ligament tear'] },
+  { id: 'knee_ligament_unspecified', label: '膝关节韧带伤病（未明确）', aliases: ['Torn knee ligaments', 'Inflammation of ligaments in the knee'] },
+  { id: 'hamstring_injury', label: '腿筋伤病', aliases: ['Hamstring injury', 'Hamstring muscle injury', 'Hamstring strain'] },
   { id: 'hip_unspecified', label: '髋部伤势（未明确）', aliases: ['Hip injury', 'Hip problems'] },
   { id: 'hip_flexor', label: '髋屈肌问题', aliases: ['Hip flexor problems', 'Right hip flexor problems', 'Left hip flexor problems'] },
-  { id: 'groin_unspecified', label: '腹股沟伤势（未明确）', aliases: ['Groin injury', 'Groin problems'] },
-  { id: 'calf_unspecified', label: '小腿伤势（未明确）', aliases: ['Calf injury', 'Calf problems'] },
-  { id: 'achilles_unspecified', label: '跟腱问题（未明确）', aliases: ['Achilles tendon problems', 'Achilles heel problems'] },
+  { id: 'adductor_injury', label: '内收肌伤病', aliases: ['Adductor pain', 'Adductor injury', 'Torn muscle fiber in the adductor area', 'Adductor tear'] },
+  { id: 'groin_unspecified', label: '腹股沟伤病', aliases: ['Groin injury', 'Groin problems', 'Groin strain'] },
+  { id: 'calf_unspecified', label: '小腿肌肉伤病', aliases: ['Calf injury', 'Calf problems', 'Calf muscle tear', 'Calf strain', 'Calf stiffness'] },
+  { id: 'achilles_unspecified', label: '跟腱伤病', aliases: ['Achilles tendon problems', 'Achilles tendon rupture', 'Achilles tendon contusion', 'Achilles tendon irritation', 'Achilles heel problems', 'Achilles tendon surgery'] },
+  { id: 'fibula_fracture', label: '腓骨骨折', aliases: ['Broken fibula', 'Fissure of the fibula', 'Hairline fracture in the fibula'] },
   { id: 'ankle_unspecified', label: '脚踝伤势（未明确）', aliases: ['Ankle injury', 'Injury to the ankle'] },
-  { id: 'ankle_sprain', label: '脚踝扭伤', aliases: ['Ankle sprain', 'ankle sprain'] },
   { id: 'ankle_bruise', label: '脚踝挫伤', aliases: ['Bruise on ankle', 'Bruise on the ankle joint'] },
-  { id: 'ankle_ligament_tear', label: '脚踝韧带撕裂', aliases: ['Torn ankle ligaments', 'Ankle ligament tear'] },
+  { id: 'ankle_ligament_injury', label: '脚踝韧带伤病', aliases: ['Ankle sprain', 'ankle sprain', 'Torn ankle ligaments', 'Torn lateral ankle ligament', 'Ankle ligament tear'] },
+  { id: 'heel_injury', label: '足跟伤病', aliases: ['Heel problems', 'Heel injury'] },
   { id: 'back_unspecified', label: '背部伤势（未明确）', aliases: ['Back problems', 'Back injury'] },
+  { id: 'abdominal_muscle_injury', label: '腹肌伤病', aliases: ['Injury to abdominal muscles', 'Abdominal muscle strain'] },
   { id: 'muscle_unspecified', label: '肌肉伤势（部位未明）', aliases: ['Muscle injury', 'muscular problems'] },
-  { id: 'muscle_fiber_tear', label: '肌纤维撕裂', aliases: ['Torn muscle fiber', 'Muscle fiber tear'] },
+  { id: 'muscle_fiber_tear', label: '肌肉撕裂（部位未明）', aliases: ['Torn muscle fiber', 'Muscle fiber tear', 'Torn muscle bundle', 'Muscle tear', 'Partial muscle tear'] },
   { id: 'muscle_strain', label: '肌肉拉伤（部位未明）', aliases: ['strain', 'Muscle strain'] },
   { id: 'syndesmosis_tear', label: '下胫腓联合韧带撕裂', aliases: ['Syndesmotic ligament tear', 'Syndesmosis ligament tear'] },
   { id: 'ligament_tear_unspecified', label: '韧带撕裂（部位未明）', aliases: ['Torn ligaments', 'Ligament tear'] },
@@ -715,7 +721,7 @@ async function archive(request, env, origin, ctx) {
   }
 
   const cache = caches.default;
-  const cacheUrl = new URL(`/__cache/v4/history-archive?league=${encodeURIComponent(league)}`, request.url);
+  const cacheUrl = new URL(`/__cache/v5/history-archive?league=${encodeURIComponent(league)}`, request.url);
   const cacheKey = new Request(cacheUrl, { method: 'GET' });
   const cached = await cache.match(cacheKey);
   if (cached) return cached;
