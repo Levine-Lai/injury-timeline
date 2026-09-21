@@ -75,13 +75,24 @@
       x: left + (index / (binCount - 1)) * plotWidth,
       y: baseline - (count / yMax) * (baseline - top),
     }));
-    let line = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
-    for (let index = 1; index < points.length; index += 1) {
-      const previous = points[index - 1];
-      const point = points[index];
-      const middle = (previous.x + point.x) / 2;
-      line += ` C ${middle.toFixed(1)} ${previous.y.toFixed(1)}, ${middle.toFixed(1)} ${point.y.toFixed(1)}, ${point.x.toFixed(1)} ${point.y.toFixed(1)}`;
-    }
+    const smoothPath = (startIndex = 0, endIndex = points.length - 1) => {
+      let path = `M ${points[startIndex].x.toFixed(1)} ${points[startIndex].y.toFixed(1)}`;
+      for (let index = startIndex + 1; index <= endIndex; index += 1) {
+        const previous = points[index - 1];
+        const point = points[index];
+        const middle = (previous.x + point.x) / 2;
+        path += ` C ${middle.toFixed(1)} ${previous.y.toFixed(1)}, ${middle.toFixed(1)} ${point.y.toFixed(1)}, ${point.x.toFixed(1)} ${point.y.toFixed(1)}`;
+      }
+      return path;
+    };
+    const line = smoothPath();
+    const peakIndex = bins.indexOf(yMax);
+    const peakStartIndex = Math.max(0, peakIndex - 1);
+    const peakEndIndex = Math.min(points.length - 1, peakIndex + 1);
+    const peakLine = smoothPath(peakStartIndex, peakEndIndex);
+    const peakRangeStart = Math.round((peakIndex / binCount) * xMax);
+    const peakRangeEnd = Math.round(((peakIndex + 1) / binCount) * xMax);
+    const peakLabelX = Math.min(width - right - 96, Math.max(left + 6, points[peakIndex].x + 8));
     const area = `${line} L ${points.at(-1).x.toFixed(1)} ${baseline} L ${points[0].x.toFixed(1)} ${baseline} Z`;
     const average = Number(stats.average_days || 0);
     const averageX = left + Math.min(average / xMax, 1) * plotWidth;
@@ -102,6 +113,9 @@
           <line x1="${left}" y1="${baseline}" x2="${width - right}" y2="${baseline}" class="chart-axis"/>
           <path d="${area}" class="wave-area"/>
           <path d="${line}" class="wave-line"/>
+          <path d="${peakLine}" class="wave-peak-line"/>
+          <circle cx="${points[peakIndex].x}" cy="${points[peakIndex].y}" r="5" class="wave-peak-point"/>
+          <text x="${peakLabelX}" y="${Math.max(top + 12, points[peakIndex].y - 10)}" class="peak-label">高频 ${peakRangeStart}–${peakRangeEnd} 天</text>
           <line x1="${averageX}" y1="${top}" x2="${averageX}" y2="${baseline}" class="average-line"/>
           <text x="${Math.min(averageX + 7, width - 86)}" y="34" class="average-label">平均 ${number(average)} 天</text>
           <g class="hover-guide" hidden>
@@ -124,8 +138,13 @@
     const tooltip = guide.querySelector('.hover-tooltip');
     const tooltipText = tooltip.querySelector('text');
     const moveGuide = event => {
-      const bounds = svg.getBoundingClientRect();
-      const viewX = Math.min(width - right, Math.max(left, ((event.clientX - bounds.left) / bounds.width) * width));
+      const matrix = svg.getScreenCTM();
+      if (!matrix) return;
+      const cursor = svg.createSVGPoint();
+      cursor.x = event.clientX;
+      cursor.y = event.clientY;
+      const local = cursor.matrixTransform(matrix.inverse());
+      const viewX = Math.min(width - right, Math.max(left, local.x));
       const position = ((viewX - left) / plotWidth) * (binCount - 1);
       const lowIndex = Math.floor(position);
       const highIndex = Math.min(binCount - 1, Math.ceil(position));
