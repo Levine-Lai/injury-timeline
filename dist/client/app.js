@@ -148,7 +148,7 @@ async function syncInjuries() {
     renderTeamTabs();
     renderList();
     const updated = formatDate(payload?.meta?.updated_at);
-    document.querySelector('.freshness').innerHTML = `<i></i> FPL · 更新至 ${escapeHtml(updated)}`;
+    document.querySelector('.freshness').innerHTML = `<i></i> 英超数据 · 更新至 ${escapeHtml(updated)}`;
   } catch (_error) {
     document.querySelector('.freshness').innerHTML = '<i class="warning-dot"></i> 更新失败';
     document.querySelector('#team-tabs').innerHTML = '';

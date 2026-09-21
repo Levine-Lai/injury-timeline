@@ -136,7 +136,7 @@ function initialPage() {
       <div class="similar-head"><span>球员</span><span>相似率</span><span>受伤日期</span><span>受伤天数</span></div>
       <div class="similar-list" id="case-table"><div class="loading-inline">读取中</div></div>
     </section>
-    <p class="player-source">实时状态：${id.startsWith('fpl_') ? 'Fantasy Premier League' : 'Big Balls Sports'} · 历史样本：European Football Injuries 2020–2025</p>`;
+    <p class="player-source">实时状态：${id.startsWith('fpl_') ? '英超官方梦幻足球' : '第三方伤病数据接口'} · 历史样本：欧洲足球伤病数据集 2020–2025</p>`;
   bindImageFallbacks(root);
   return true;
 }

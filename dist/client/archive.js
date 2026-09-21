@@ -148,6 +148,23 @@
       </button>`).join('') || '<div class="empty-state compact">暂无分类记录</div>';
   }
 
+  function firstTypeInRegion() {
+    return catalog?.data.types.find(type => type.category_id === selectedRegion) || null;
+  }
+
+  function selectFirstType() {
+    const type = firstTypeInRegion();
+    selectedTypeId = type?.type_id || null;
+    renderTypes();
+    if (type) loadRecords({ type });
+    else {
+      hideChart();
+      document.querySelector('#archive-record-title').textContent = '案例记录';
+      document.querySelector('#archive-record-count').textContent = '暂无记录';
+      recordRoot.innerHTML = '<div class="empty-state">暂无案例</div>';
+    }
+  }
+
   function renderRecords(rows, heading, hasMore = false) {
     document.querySelector('#archive-record-title').textContent = heading;
     document.querySelector('#archive-record-count').textContent = hasMore ? `显示前 ${rows.length} 条` : `${rows.length} 条`;
@@ -168,21 +185,17 @@
   async function loadCatalog() {
     regionRoot.innerHTML = '<div class="loading-state"><span></span>正在读取历史档案</div>';
     typeRoot.innerHTML = '';
-    const params = new URLSearchParams();
+    const params = new URLSearchParams({ schema: '20260921-2' });
     if (leagueSelect.value) params.set('league', leagueSelect.value);
     try {
-      const response = await fetch(`${archiveApiBase}/api/history/archive?${params}`, {headers:{Accept:'application/json'}});
+      const response = await fetch(`${archiveApiBase}/api/history/archive?${params}`, {cache:'no-store', headers:{Accept:'application/json'}});
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       catalog = await response.json();
       selectedRegion = catalog.data.categories[0]?.id || null;
       selectedTypeId = null;
       document.querySelector('#archive-total').textContent = `${number(catalog.meta.classified_cases)} 个已结束案例`;
       renderRegions();
-      renderTypes();
-      hideChart();
-      document.querySelector('#archive-record-title').textContent = '案例记录';
-      document.querySelector('#archive-record-count').textContent = '选择伤病类型';
-      recordRoot.innerHTML = '<div class="empty-state">选择伤病类型查看案例</div>';
+      selectFirstType();
     } catch (_error) {
       regionRoot.innerHTML = '<div class="empty-state">历史档案暂时不可用</div>';
       document.querySelector('#archive-total').textContent = '读取失败';
@@ -190,14 +203,14 @@
   }
 
   async function loadRecords({ type = null, query = '' } = {}) {
-    const params = new URLSearchParams({ limit: '50' });
+    const params = new URLSearchParams({ limit: '50', schema: '20260921-2' });
     if (leagueSelect.value) params.set('league', leagueSelect.value);
     if (type) type.raw_labels.forEach(label => params.append('injury', label));
     if (query) params.set('q', query);
     hideChart();
     recordRoot.innerHTML = '<div class="loading-state"><span></span>正在读取案例</div>';
     try {
-      const response = await fetch(`${archiveApiBase}/api/history/archive?${params}`, {headers:{Accept:'application/json'}});
+      const response = await fetch(`${archiveApiBase}/api/history/archive?${params}`, {cache:'no-store', headers:{Accept:'application/json'}});
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const payload = await response.json();
       if (type) renderChart(type, payload.distribution || [], payload.stats);
@@ -215,11 +228,7 @@
     selectedRegion = button.dataset.region;
     selectedTypeId = null;
     renderRegions();
-    renderTypes();
-    hideChart();
-    document.querySelector('#archive-record-title').textContent = '案例记录';
-    document.querySelector('#archive-record-count').textContent = '选择伤病类型';
-    recordRoot.innerHTML = '<div class="empty-state">选择伤病类型查看案例</div>';
+    selectFirstType();
   });
   typeRoot.addEventListener('click', event => {
     const button = event.target.closest('[data-type-id]');
