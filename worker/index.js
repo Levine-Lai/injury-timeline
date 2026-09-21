@@ -102,19 +102,19 @@ const INJURY_LABELS = {
 const ARCHIVE_CATEGORIES = [
   { id: 'knee', label: '膝部', pattern: /knee|meniscus|cruciate|acl|patell|collateral/i },
   { id: 'thigh', label: '大腿与腿筋', pattern: /hamstring|thigh|quadriceps/i },
-  { id: 'hip_groin', label: '髋部与腹股沟', pattern: /hip|groin|adductor|pubalgia|pubic/i },
-  { id: 'lower_leg', label: '小腿与跟腱', pattern: /calf|shin|fibula|lower leg|achilles/i },
+  { id: 'hip_groin', label: '髋部与腹股沟', pattern: /\bhip\b|groin|adductor|pubalgia|pubic|pelvic/i },
+  { id: 'lower_leg', label: '小腿与跟腱', pattern: /calf|\bshin(?:bone)?\b|fibula|lower leg|achilles|peroneus/i },
   { id: 'ankle', label: '脚踝', pattern: /ankle/i },
   { id: 'foot', label: '足部', pattern: /foot|metatarsal|toe|heel|plantar/i },
-  { id: 'back', label: '背部与脊柱', pattern: /back|lumbago|lumbar|spine|vertebra/i },
-  { id: 'upper_limb', label: '肩臂与手部', pattern: /shoulder|arm|elbow|wrist|hand|forearm|metacarpal/i },
-  { id: 'head_neck', label: '头颈部', pattern: /head|concussion|nose|facial|eye socket|neck/i },
+  { id: 'back', label: '背部与脊柱', pattern: /back|lumbago|lumbar|spine|vertebra|sciatica/i },
+  { id: 'upper_limb', label: '肩臂与手部', pattern: /shoulder|arm|elbow|wrist|hand|forearm|metacarpal|finger|thumb|collarbone|scaphoid/i },
+  { id: 'head_neck', label: '头颈部', pattern: /head|concussion|nose|facial|eye|neck|whiplash|cheekbone|jaw|skull|frontal bone|eyebow/i },
   { id: 'torso', label: '胸腹部', pattern: /rib|chest|abdominal|abdomen/i },
   { id: 'muscle_unspecified', label: '肌肉（部位未明）', pattern: /muscle|muscular|strain/i },
   { id: 'other_trauma', label: '其他创伤', pattern: /ligament|tendon|capsular|knock|bruise|fracture|broken|surgery|inflammation|wound|tear|injury|problems/i },
 ];
 
-const NON_INJURY_LABELS = /corona|covid|virus|\bill\b|flu|influenza|fever|cold|infection|tonsillitis|quarantine|rest|fitness|stomach|food poisoning|allergy/i;
+const NON_INJURY_LABELS = /corona|covid|virus|\bill\b|flu|influenza|fever|cold|infection|tonsillitis|quarantine|rest|fitness|stomach|food poisoning|allergy|shingles|heart problems|circulation problems|kidney problems|intestinal surgery|dental surgery/i;
 
 const ARCHIVE_INJURY_NAMES = {
   'Hamstring injury': '腿筋伤势',
@@ -172,25 +172,274 @@ const ARCHIVE_INJURY_NAMES = {
   'bruise': '挫伤',
 };
 
+Object.assign(ARCHIVE_INJURY_NAMES, {
+  'Inflammation in the knee': '膝关节炎症',
+  'Inner knee ligament tear': '膝内侧韧带撕裂',
+  'Knee medial ligament tear': '膝内侧韧带撕裂',
+  'Inner ligament stretch of the knee': '膝内侧韧带拉伤',
+  'Torn lateral knee ligament': '膝外侧韧带撕裂',
+  'Bruised knee': '膝部挫伤',
+  'Torn knee ligaments': '膝关节韧带撕裂',
+  'Patellar tendon problems': '髌腱问题',
+  'Collateral ligament injury': '膝侧副韧带损伤',
+  'Cruciate ligament surgery': '十字韧带手术',
+  'Meniscus damage': '半月板损伤',
+  'Patellar tendon rupture': '髌腱断裂',
+  'Patellar tendon irritation': '髌腱刺激症状',
+  'Tear of the lateral meniscus': '外侧半月板撕裂',
+  'Partial damage to the cruciate ligament': '十字韧带部分损伤',
+  'Broken kneecap': '髌骨骨折',
+  'Cruciate ligament strain': '十字韧带拉伤',
+  'Edema in the knee': '膝关节水肿',
+  'Knee collateral ligament strain': '膝侧副韧带拉伤',
+  'Patellar tendon dislocation': '髌腱脱位',
+  'Knee collateral ligament tear': '膝侧副韧带撕裂',
+  'Meniscus irritation': '半月板刺激症状',
+  'Patellar tendon tear': '髌腱撕裂',
+  'Collateral ligament tear': '膝侧副韧带撕裂',
+  'Cyst in the knee': '膝关节囊肿',
+  'Inflammation of ligaments in the knee': '膝韧带炎症',
+  'Partial patellar tendon tear': '髌腱部分撕裂',
+  'Patellar tendinopathy syndrome': '髌腱病',
+  'Strain in the thigh and gluteal muscles': '大腿与臀肌拉伤',
+  'Inflammation of the biceps tendon in the thigh': '股二头肌腱炎症',
+  'Torn muscle fiber in the adductor area': '内收肌纤维撕裂',
+  'Pubalgia': '耻骨痛',
+  'Inflammation of pubic bone': '耻骨炎症',
+  'Pubic bone irritation': '耻骨刺激症状',
+  'Pubic bone bruise': '耻骨挫伤',
+  'Adductor tear': '内收肌撕裂',
+  'Right hip flexor problems': '髋屈肌问题',
+  'Left hip flexor problems': '髋屈肌问题',
+  'Hip bruise': '髋部挫伤',
+  'Groin strain': '腹股沟拉伤',
+  'Whiplash': '颈部挥鞭伤',
+  'Achilles tendon contusion': '跟腱挫伤',
+  'Calf strain': '小腿拉伤',
+  'Shin injury': '胫部伤势',
+  'Achilles tendon irritation': '跟腱刺激症状',
+  'Achilles heel problems': '跟腱问题',
+  'Achilles tendon surgery': '跟腱手术',
+  'Lower leg fracture': '小腿骨折',
+  'Shin bruise': '胫部挫伤',
+  'Fissure of the fibula': '腓骨裂伤',
+  'Calf stiffness': '小腿僵硬',
+  'Bruise on shinbone': '胫骨挫伤',
+  'Broken fibula': '腓骨骨折',
+  'Hairline fracture in the fibula': '腓骨细微骨折',
+  'Inflammation in the head of the fibula': '腓骨头炎症',
+  'Broken ankle': '脚踝骨折',
+  'Torn ankle ligaments': '脚踝韧带撕裂',
+  'Torn lateral ankle ligament': '脚踝外侧韧带撕裂',
+  'Ankle ligament tear': '脚踝韧带撕裂',
+  'Bruise on ankle': '脚踝挫伤',
+  'Inflammation in the ankle joint': '踝关节炎症',
+  'Dislocation fracture of the ankle joint': '踝关节骨折脱位',
+  'Bruise on the ankle joint': '踝关节挫伤',
+  'Capsular tear of ankle joint': '踝关节囊撕裂',
+  'Foot bruise': '足部挫伤',
+  'Broken foot': '足部骨折',
+  'Heel problems': '足跟问题',
+  'Broken toe': '脚趾骨折',
+  'Heel injury': '足跟伤势',
+  'Foot surgery': '足部手术',
+  'Heel spur': '跟骨骨刺',
+  'Hairline crack in foot': '足部细微骨折',
+  'Metatarsal bruise': '跖骨挫伤',
+  'Inflammation of the sole of the foot': '足底炎症',
+  'Partial tear of the plantar fascia': '足底筋膜部分撕裂',
+  'Bruised back': '背部挫伤',
+  'Lumbar vertebra fracture': '腰椎骨折',
+  'Lumbar vertebra problems': '腰椎问题',
+  'Cervical spine injury': '颈椎伤势',
+  'Blockage in the back': '背部活动受限',
+  'Compression of the spine': '脊柱压迫',
+  'Inflammation in the spine': '脊柱炎症',
+  'Vertebral injury': '椎体伤势',
+  'Elbow injury': '肘部伤势',
+  'Broken arm': '手臂骨折',
+  'Broken hand': '手部骨折',
+  'Wrist injury': '手腕伤势',
+  'Arm injury': '手臂伤势',
+  'Wrist fracture': '手腕骨折',
+  'Forearm fracture': '前臂骨折',
+  'Metacarpal fracture': '掌骨骨折',
+  'Shoulder joint contusion': '肩关节挫伤',
+  'Broken shoulder': '肩部骨折',
+  'Broken nose bone': '鼻骨骨折',
+  'Neck injury': '颈部伤势',
+  'Nose surgery': '鼻部手术',
+  'Facial injury': '面部伤势',
+  'Facial fracture': '面部骨折',
+  'Fracture of the eye socket': '眼眶骨折',
+  'Nose injury': '鼻部伤势',
+  'Chest injury': '胸部伤势',
+  'Injury to abdominal muscles': '腹肌伤势',
+  'Bruised ribs': '肋骨挫伤',
+  'Abdominal muscle strain': '腹肌拉伤',
+  'Rib fracture': '肋骨骨折',
+  'Abdominal problems': '腹部问题',
+  'Internal ligament strain': '内侧韧带拉伤',
+  'Muscle fiber tear': '肌纤维撕裂',
+  'muscle stiffness': '肌肉僵硬',
+  'Partial muscle tear': '肌肉部分撕裂',
+  'Muscle contusion': '肌肉挫伤',
+  'Sore muscles': '肌肉酸痛',
+  'Muscle tear': '肌肉撕裂',
+  'Hairline fracture in the muscles': '肌肉区域细微骨折',
+  'Inner ligament injury': '内侧韧带损伤',
+  'Ligament injury': '韧带损伤',
+  'surgery': '手术恢复',
+  'inflammation': '炎症',
+  'Capsular injury': '关节囊损伤',
+  'Finger injury': '手指伤势',
+  'Broken collarbone': '锁骨骨折',
+  'Tendon irritation': '肌腱刺激症状',
+  'Broken finger': '手指骨折',
+  'Syndesmotic ligament tear': '下胫腓联合韧带撕裂',
+  'Outer ligament problems': '外侧韧带问题',
+  'Pelvic injury': '骨盆伤势',
+  'Pelvic contusion': '骨盆挫伤',
+  'Pelvic obliquity': '骨盆倾斜',
+  'Tendonitis': '肌腱炎',
+  'Syndesmosis ligament tear': '下胫腓联合韧带撕裂',
+  'Eye injury': '眼部伤势',
+  'Ligament stretching': '韧带拉伤',
+  'Tendon rupture': '肌腱断裂',
+  'Broken cheekbone': '颧骨骨折',
+  'Broken jaw': '颌骨骨折',
+  'Broken tibia': '胫骨骨折',
+  'Outer ligament tear': '外侧韧带撕裂',
+  'flesh wound': '皮肉伤',
+  'Arch problems': '足弓问题',
+  'Thumb injury': '拇指伤势',
+  'laceration wound': '撕裂伤',
+  'Internal ligament tear': '内侧韧带撕裂',
+  'Sciatica problems': '坐骨神经痛',
+  'Tendon tear': '肌腱撕裂',
+  'Torn ligaments': '韧带撕裂',
+  'fatigue fracture': '疲劳性骨折',
+  'fracture': '骨折（部位未明）',
+  'Peroneus tendon injury': '腓骨肌腱伤势',
+  'Bone bruise': '骨挫伤',
+  'Broken leg': '腿部骨折',
+  'Scaphoid fracture': '舟骨骨折',
+  'Broken thumb': '拇指骨折',
+  'Eyebow fracture': '眉骨骨折',
+  'Ligament tear': '韧带撕裂',
+  'open wound': '开放性伤口',
+  'Crack bruise': '裂伤伴挫伤',
+  'Femoral fracture': '股骨骨折',
+  'Fracture of frontal bone': '额骨骨折',
+  'Longitudinal tendon tear': '肌腱纵向撕裂',
+  'Overstretching of the syndesmotic ligament': '下胫腓联合韧带过度拉伸',
+  'Scaphoid surgery': '舟骨手术',
+  'Skull fracture': '颅骨骨折',
+});
+
+const CANONICAL_INJURIES = [
+  { id: 'knee_unspecified', label: '膝部伤势（未明确）', aliases: ['Knee injury', 'Knee problems'] },
+  { id: 'knee_bruise', label: '膝部挫伤', aliases: ['Knee bruise', 'Bruised knee'] },
+  { id: 'meniscus_injury', label: '半月板损伤', aliases: ['Meniscus injury', 'Meniscus damage', 'Meniscus irritation'] },
+  { id: 'knee_collateral_tear', label: '膝侧副韧带撕裂', aliases: ['Inner knee ligament tear', 'Knee medial ligament tear', 'Knee collateral ligament tear', 'Collateral ligament tear'] },
+  { id: 'hamstring_injury', label: '腿筋伤势', aliases: ['Hamstring injury', 'Hamstring muscle injury'] },
+  { id: 'hip_unspecified', label: '髋部伤势（未明确）', aliases: ['Hip injury', 'Hip problems'] },
+  { id: 'hip_flexor', label: '髋屈肌问题', aliases: ['Hip flexor problems', 'Right hip flexor problems', 'Left hip flexor problems'] },
+  { id: 'groin_unspecified', label: '腹股沟伤势（未明确）', aliases: ['Groin injury', 'Groin problems'] },
+  { id: 'calf_unspecified', label: '小腿伤势（未明确）', aliases: ['Calf injury', 'Calf problems'] },
+  { id: 'achilles_unspecified', label: '跟腱问题（未明确）', aliases: ['Achilles tendon problems', 'Achilles heel problems'] },
+  { id: 'ankle_unspecified', label: '脚踝伤势（未明确）', aliases: ['Ankle injury', 'Injury to the ankle'] },
+  { id: 'ankle_sprain', label: '脚踝扭伤', aliases: ['Ankle sprain', 'ankle sprain'] },
+  { id: 'ankle_bruise', label: '脚踝挫伤', aliases: ['Bruise on ankle', 'Bruise on the ankle joint'] },
+  { id: 'ankle_ligament_tear', label: '脚踝韧带撕裂', aliases: ['Torn ankle ligaments', 'Ankle ligament tear'] },
+  { id: 'back_unspecified', label: '背部伤势（未明确）', aliases: ['Back problems', 'Back injury'] },
+  { id: 'muscle_unspecified', label: '肌肉伤势（部位未明）', aliases: ['Muscle injury', 'muscular problems'] },
+  { id: 'muscle_fiber_tear', label: '肌纤维撕裂', aliases: ['Torn muscle fiber', 'Muscle fiber tear'] },
+  { id: 'muscle_strain', label: '肌肉拉伤（部位未明）', aliases: ['strain', 'Muscle strain'] },
+  { id: 'syndesmosis_tear', label: '下胫腓联合韧带撕裂', aliases: ['Syndesmotic ligament tear', 'Syndesmosis ligament tear'] },
+  { id: 'ligament_tear_unspecified', label: '韧带撕裂（部位未明）', aliases: ['Torn ligaments', 'Ligament tear'] },
+  { id: 'knock', label: '碰撞伤', aliases: ['Knock', 'minor knock'] },
+];
+
+const REVIEW_REQUIRED_LABELS = new Set([
+  'Internal ligament strain', 'Hairline fracture in the muscles', 'Inner ligament injury',
+  'Ligament injury', 'surgery', 'inflammation', 'Capsular injury', 'Outer ligament problems',
+  'Ligament stretching', 'Outer ligament tear', 'Internal ligament tear', 'Torn ligaments',
+  'fatigue fracture', 'fracture', 'Ligament tear', 'Crack bruise', 'Longitudinal tendon tear',
+  'Pelvic obliquity',
+]);
+
+const CANONICAL_ALIAS_MAP = new Map();
+for (const group of CANONICAL_INJURIES) {
+  for (const alias of group.aliases) CANONICAL_ALIAS_MAP.set(alias, group);
+}
+
+function canonicalArchiveInjury(injuryType) {
+  const group = CANONICAL_ALIAS_MAP.get(injuryType);
+  return {
+    id: group?.id || `raw:${injuryType}`,
+    label: group?.label || ARCHIVE_INJURY_NAMES[injuryType] || '待审核伤病类型',
+    review_required: REVIEW_REQUIRED_LABELS.has(injuryType) || !ARCHIVE_INJURY_NAMES[injuryType] && !group,
+  };
+}
+
+const ARCHIVE_CATEGORY_OVERRIDES = new Map([
+  ['Whiplash', 'head_neck'],
+  ['Femoral fracture', 'thigh'],
+  ['Pelvic injury', 'hip_groin'],
+  ['Arch problems', 'foot'],
+  ['Syndesmotic ligament tear', 'ankle'],
+  ['Syndesmosis ligament tear', 'ankle'],
+  ['Overstretching of the syndesmotic ligament', 'ankle'],
+  ['Broken tibia', 'lower_leg'],
+  ['Scaphoid fracture', 'upper_limb'],
+  ['Scaphoid surgery', 'upper_limb'],
+  ['Broken collarbone', 'upper_limb'],
+]);
+
 function archiveCategory(injuryType) {
   if (!injuryType || NON_INJURY_LABELS.test(injuryType)) return null;
+  const override = ARCHIVE_CATEGORY_OVERRIDES.get(injuryType);
+  if (override) return ARCHIVE_CATEGORIES.find(category => category.id === override) || null;
   return ARCHIVE_CATEGORIES.find(category => category.pattern.test(injuryType)) || null;
 }
 
-function archiveTypeRow(row) {
-  const category = archiveCategory(row.injury_type);
-  if (!category) return null;
-  return {
-    injury_type: row.injury_type,
-    injury_label: ARCHIVE_INJURY_NAMES[row.injury_type] || row.injury_type,
-    category_id: category.id,
-    category_label: category.label,
-    cases: Number(row.cases || 0),
-    players: Number(row.players || 0),
-    average_days: Number(row.average_days || 0),
-    minimum_days: Number(row.minimum_days || 0),
-    maximum_days: Number(row.maximum_days || 0),
-  };
+function mergeArchiveTypes(rows) {
+  const merged = new Map();
+  for (const row of rows) {
+    const category = archiveCategory(row.injury_type);
+    if (!category) continue;
+    const canonical = canonicalArchiveInjury(row.injury_type);
+    const cases = Number(row.cases || 0);
+    const current = merged.get(canonical.id) || {
+      type_id: canonical.id,
+      injury_label: canonical.label,
+      category_id: category.id,
+      category_label: category.label,
+      cases: 0,
+      players: 0,
+      average_days: 0,
+      minimum_days: Number.POSITIVE_INFINITY,
+      maximum_days: 0,
+      raw_labels: [],
+      review_required: false,
+      weighted_days: 0,
+    };
+    current.cases += cases;
+    current.players += Number(row.players || 0);
+    current.weighted_days += Number(row.average_days || 0) * cases;
+    current.minimum_days = Math.min(current.minimum_days, Number(row.minimum_days || 0));
+    current.maximum_days = Math.max(current.maximum_days, Number(row.maximum_days || 0));
+    current.raw_labels.push(row.injury_type);
+    current.review_required ||= canonical.review_required;
+    merged.set(canonical.id, current);
+  }
+  return [...merged.values()].map(type => {
+    type.average_days = type.cases ? Math.round((type.weighted_days / type.cases) * 10) / 10 : 0;
+    if (!Number.isFinite(type.minimum_days)) type.minimum_days = 0;
+    delete type.weighted_days;
+    return type;
+  }).sort((a, b) => b.cases - a.cases || a.injury_label.localeCompare(b.injury_label, 'zh-CN'));
 }
 
 function injuryLabels(value) {
@@ -391,7 +640,7 @@ async function stats(url, env, origin) {
 async function archive(request, env, origin, ctx) {
   const url = new URL(request.url);
   const league = (url.searchParams.get('league') || '').trim();
-  const injury = (url.searchParams.get('injury') || '').trim();
+  const injuries = [...new Set(url.searchParams.getAll('injury').map(value => value.trim()).filter(Boolean))].slice(0, 20);
   const query = (url.searchParams.get('q') || '').trim().replace(/\s+/g, ' ');
   const limit = limitFrom(url, 30, 50);
   const offsetValue = Number.parseInt(url.searchParams.get('offset') || '', 10);
@@ -399,7 +648,7 @@ async function archive(request, env, origin, ctx) {
 
   if (query && query.length < 2) return json({ error: 'search query must contain at least 2 characters' }, 400, origin);
 
-  if (injury || query) {
+  if (injuries.length || query) {
     const where = [
       'date_until IS NOT NULL',
       'days_missed IS NOT NULL',
@@ -407,15 +656,15 @@ async function archive(request, env, origin, ctx) {
       "(? = '' OR league = ?)",
     ];
     const bindings = [league, league];
-    if (injury) {
-      where.push('injury_type = ?');
-      bindings.push(injury);
+    if (injuries.length) {
+      where.push(`injury_type IN (${injuries.map(() => '?').join(', ')})`);
+      bindings.push(...injuries);
     }
     if (query) {
       where.push('player_name LIKE ? COLLATE NOCASE');
       bindings.push(`%${query}%`);
     }
-    const result = await env.injury_history.prepare(`
+    const recordsPromise = env.injury_history.prepare(`
       SELECT id, player_id, season, injury_type, date_from, date_until, days_missed,
              games_missed, player_name, player_age, player_position, club, league
       FROM injury_events
@@ -423,14 +672,50 @@ async function archive(request, env, origin, ctx) {
       ORDER BY date_from DESC, id DESC
       LIMIT ? OFFSET ?
     `).bind(...bindings, limit, offset).all();
+
+    let distributionPromise = Promise.resolve({ results: [] });
+    let statsPromise = Promise.resolve(null);
+    if (injuries.length && !query) {
+      const labelParameters = injuries.map(() => '?').join(', ');
+      distributionPromise = env.injury_history.prepare(`
+        SELECT days_missed, COUNT(*) AS cases
+        FROM injury_events
+        WHERE date_until IS NOT NULL
+          AND days_missed IS NOT NULL
+          AND days_missed > 0
+          AND (? = '' OR league = ?)
+          AND injury_type IN (${labelParameters})
+        GROUP BY days_missed
+        ORDER BY days_missed ASC
+      `).bind(league, league, ...injuries).all();
+      statsPromise = env.injury_history.prepare(`
+        SELECT COUNT(*) AS sample_size,
+               ROUND(AVG(days_missed), 1) AS average_days,
+               MIN(days_missed) AS minimum_days,
+               MAX(days_missed) AS maximum_days
+        FROM injury_events
+        WHERE date_until IS NOT NULL
+          AND days_missed IS NOT NULL
+          AND days_missed > 0
+          AND (? = '' OR league = ?)
+          AND injury_type IN (${labelParameters})
+      `).bind(league, league, ...injuries).first();
+    }
+    const [result, distributionResult, typeStats] = await Promise.all([recordsPromise, distributionPromise, statsPromise]);
+    const records = (result.results || []).map(row => ({
+      ...row,
+      injury_label: canonicalArchiveInjury(row.injury_type).label,
+    }));
     return json({
-      query: { injury: injury || null, player: query || null, league: league || null, limit, offset },
-      results: result.results || [],
+      query: { injuries, player: query || null, league: league || null, limit, offset },
+      results: records,
+      distribution: distributionResult.results || [],
+      stats: typeStats,
     }, 200, origin);
   }
 
   const cache = caches.default;
-  const cacheUrl = new URL(`/__cache/v1/history-archive?league=${encodeURIComponent(league)}`, request.url);
+  const cacheUrl = new URL(`/__cache/v4/history-archive?league=${encodeURIComponent(league)}`, request.url);
   const cacheKey = new Request(cacheUrl, { method: 'GET' });
   const cached = await cache.match(cacheKey);
   if (cached) return cached;
@@ -462,7 +747,7 @@ async function archive(request, env, origin, ctx) {
     `).bind(league, league).first(),
   ]);
 
-  const types = (typesResult.results || []).map(archiveTypeRow).filter(Boolean);
+  const types = mergeArchiveTypes(typesResult.results || []);
   const categories = ARCHIVE_CATEGORIES.map(category => {
     const categoryTypes = types.filter(type => type.category_id === category.id);
     return {
@@ -473,6 +758,11 @@ async function archive(request, env, origin, ctx) {
     };
   }).filter(category => category.cases > 0);
   const classifiedCases = types.reduce((sum, type) => sum + type.cases, 0);
+  const reviewTypes = types.filter(type => type.review_required).map(type => ({
+    injury_label: type.injury_label,
+    cases: type.cases,
+    raw_labels: type.raw_labels,
+  }));
   const response = json({
     data: { categories, types },
     meta: {
@@ -480,6 +770,7 @@ async function archive(request, env, origin, ctx) {
       completed_cases: Number(totalResult?.cases || 0),
       classified_cases: classifiedCases,
       players: Number(totalResult?.players || 0),
+      review_types: reviewTypes,
       source: 'European Football Injuries 2020–2025',
     },
   }, 200, origin);

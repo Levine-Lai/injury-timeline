@@ -5,13 +5,15 @@
   const regionRoot = document.querySelector('#archive-regions');
   const typeRoot = document.querySelector('#archive-types');
   const recordRoot = document.querySelector('#archive-records');
+  const chartPanel = document.querySelector('#archive-chart-panel');
+  const chartRoot = document.querySelector('#archive-chart');
   const leagueSelect = document.querySelector('#archive-league');
   const searchForm = document.querySelector('#archive-search');
   const searchInput = document.querySelector('#archive-query');
   const archiveApiBase = (window.INJURY_API_BASE || '.').replace(/\/$/, '');
   let catalog = null;
   let selectedRegion = null;
-  let selectedInjury = null;
+  let selectedTypeId = null;
 
   const escape = value => String(value ?? '').replace(/[&<>'"]/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[character]));
   const number = value => new Intl.NumberFormat('zh-CN').format(Number(value || 0));
@@ -20,6 +22,93 @@
     const parts = String(value).slice(0, 10).split('-');
     return parts.length === 3 ? `${parts[0]}.${Number(parts[1])}.${Number(parts[2])}` : value;
   };
+  const positionNames = {
+    Goalkeeper:'门将', Defender:'后卫', Midfielder:'中场', Forward:'前锋',
+    'Centre-Back':'中后卫', 'Left-Back':'左后卫', 'Right-Back':'右后卫',
+    'Defensive Midfield':'后腰', 'Central Midfield':'中场', 'Attacking Midfield':'前腰',
+    'Left Midfield':'左中场', 'Right Midfield':'右中场', 'Left Winger':'左边锋',
+    'Right Winger':'右边锋', 'Centre-Forward':'中锋', 'Second Striker':'影锋',
+  };
+  const leagueNames = {'Premier League':'英超', 'La Liga':'西甲', Bundesliga:'德甲', 'Serie A':'意甲', 'Ligue 1':'法甲'};
+
+  function hideChart() {
+    chartPanel.hidden = true;
+    chartRoot.innerHTML = '';
+  }
+
+  function percentile(distribution, fraction) {
+    const total = distribution.reduce((sum, item) => sum + Number(item.cases || 0), 0);
+    const target = total * fraction;
+    let cumulative = 0;
+    for (const item of distribution) {
+      cumulative += Number(item.cases || 0);
+      if (cumulative >= target) return Number(item.days_missed || 0);
+    }
+    return Number(distribution.at(-1)?.days_missed || 0);
+  }
+
+  function renderChart(type, distribution, stats) {
+    if (!distribution.length || !stats?.sample_size) {
+      hideChart();
+      return;
+    }
+    const width = 900;
+    const height = 220;
+    const left = 48;
+    const right = 24;
+    const top = 20;
+    const baseline = 174;
+    const plotWidth = width - left - right;
+    const binCount = 24;
+    const observedMax = Number(stats.maximum_days || 0);
+    const p97 = percentile(distribution, .97);
+    const step = p97 <= 90 ? 10 : p97 <= 180 ? 15 : 30;
+    const xMax = Math.max(step * 3, Math.ceil(p97 / step) * step);
+    const bins = Array(binCount).fill(0);
+    distribution.forEach(item => {
+      const days = Number(item.days_missed || 0);
+      const index = Math.min(binCount - 1, Math.floor((days / xMax) * binCount));
+      bins[index] += Number(item.cases || 0);
+    });
+    const yMax = Math.max(...bins, 1);
+    const points = bins.map((count, index) => ({
+      x: left + (index / (binCount - 1)) * plotWidth,
+      y: baseline - (count / yMax) * (baseline - top),
+    }));
+    let line = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
+    for (let index = 1; index < points.length; index += 1) {
+      const previous = points[index - 1];
+      const point = points[index];
+      const middle = (previous.x + point.x) / 2;
+      line += ` C ${middle.toFixed(1)} ${previous.y.toFixed(1)}, ${middle.toFixed(1)} ${point.y.toFixed(1)}, ${point.x.toFixed(1)} ${point.y.toFixed(1)}`;
+    }
+    const area = `${line} L ${points.at(-1).x.toFixed(1)} ${baseline} L ${points[0].x.toFixed(1)} ${baseline} Z`;
+    const average = Number(stats.average_days || 0);
+    const averageX = left + Math.min(average / xMax, 1) * plotWidth;
+    const median = percentile(distribution, .5);
+    const ticks = [0, .25, .5, .75, 1].map(fraction => {
+      const x = left + fraction * plotWidth;
+      const value = Math.round(xMax * fraction);
+      const label = fraction === 1 && observedMax > xMax ? `≥${value}天` : `${value}天`;
+      return `<line x1="${x}" y1="${top}" x2="${x}" y2="${baseline}" class="chart-grid"/><text x="${x}" y="204" text-anchor="middle">${label}</text>`;
+    }).join('');
+    document.querySelector('#archive-chart-title').textContent = `${type.injury_label} · 缺阵天数分布`;
+    document.querySelector('#archive-average').textContent = `平均 ${number(average)} 天`;
+    chartRoot.innerHTML = `
+      <figure class="injury-wave" aria-label="${escape(type.injury_label)}缺阵天数分布，平均${number(average)}天">
+        <svg viewBox="0 0 ${width} ${height}" role="img">
+          <title>${escape(type.injury_label)}缺阵天数分布</title>
+          ${ticks}
+          <line x1="${left}" y1="${baseline}" x2="${width - right}" y2="${baseline}" class="chart-axis"/>
+          <path d="${area}" class="wave-area"/>
+          <path d="${line}" class="wave-line"/>
+          <line x1="${averageX}" y1="${top}" x2="${averageX}" y2="${baseline}" class="average-line"/>
+          <text x="${Math.min(averageX + 7, width - 86)}" y="34" class="average-label">平均 ${number(average)} 天</text>
+        </svg>
+        <figcaption><span>样本 ${number(stats.sample_size)} 例</span><span>中位数 ${number(median)} 天</span><span>最长 ${number(stats.maximum_days)} 天</span></figcaption>
+      </figure>`;
+    chartPanel.hidden = false;
+  }
 
   function setView(view, updateUrl = true) {
     const archiveActive = view === 'archive';
@@ -52,8 +141,8 @@
     document.querySelector('#archive-types-title').textContent = catalog.data.categories.find(region => region.id === selectedRegion)?.label || '伤病类型';
     document.querySelector('#archive-type-count').textContent = `${types.length} 种`;
     typeRoot.innerHTML = types.map(type => `
-      <button class="archive-type${type.injury_type === selectedInjury ? ' active' : ''}" data-injury="${escape(type.injury_type)}">
-        <span><strong>${escape(type.injury_label)}</strong>${type.injury_label !== type.injury_type ? `<small>${escape(type.injury_type)}</small>` : ''}</span>
+      <button class="archive-type${type.type_id === selectedTypeId ? ' active' : ''}" data-type-id="${escape(type.type_id)}">
+        <span><strong>${escape(type.injury_label)}</strong>${type.review_required ? '<small>待审核</small>' : ''}</span>
         <span><b>${number(type.cases)}</b><small>案例</small></span>
         <span><b>${number(type.average_days)}</b><small>平均天数</small></span>
       </button>`).join('') || '<div class="empty-state compact">暂无分类记录</div>';
@@ -69,10 +158,10 @@
     recordRoot.innerHTML = rows.map(row => `
       <article class="archive-record">
         <span class="archive-person"><strong>${escape(row.player_name)}</strong><small>${escape(row.season || '—')}</small></span>
-        <span><strong>${escape(row.club || '—')}</strong><small>${escape(row.player_position || '位置未记录')}</small></span>
-        <span><strong>${formatDate(row.date_from)} — ${formatDate(row.date_until)}</strong><small>${escape(row.injury_type)}</small></span>
+        <span><strong>${escape(row.club || '—')}</strong><small>${escape(positionNames[row.player_position] || row.player_position || '位置未记录')}</small></span>
+        <span><strong>${formatDate(row.date_from)} — ${formatDate(row.date_until)}</strong><small>${escape(row.injury_label || '伤病类型待审核')}</small></span>
         <span class="archive-days"><strong>${number(row.days_missed)} 天</strong><small>${row.games_missed == null ? '场次未记录' : `${number(row.games_missed)} 场`}</small></span>
-        <span>${escape(row.league || '—')}</span>
+        <span>${escape(leagueNames[row.league] || row.league || '—')}</span>
       </article>`).join('');
   }
 
@@ -86,10 +175,11 @@
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       catalog = await response.json();
       selectedRegion = catalog.data.categories[0]?.id || null;
-      selectedInjury = null;
+      selectedTypeId = null;
       document.querySelector('#archive-total').textContent = `${number(catalog.meta.classified_cases)} 个已结束案例`;
       renderRegions();
       renderTypes();
+      hideChart();
       document.querySelector('#archive-record-title').textContent = '案例记录';
       document.querySelector('#archive-record-count').textContent = '选择伤病类型';
       recordRoot.innerHTML = '<div class="empty-state">选择伤病类型查看案例</div>';
@@ -99,18 +189,20 @@
     }
   }
 
-  async function loadRecords({ injury = '', query = '' } = {}) {
+  async function loadRecords({ type = null, query = '' } = {}) {
     const params = new URLSearchParams({ limit: '50' });
     if (leagueSelect.value) params.set('league', leagueSelect.value);
-    if (injury) params.set('injury', injury);
+    if (type) type.raw_labels.forEach(label => params.append('injury', label));
     if (query) params.set('q', query);
+    hideChart();
     recordRoot.innerHTML = '<div class="loading-state"><span></span>正在读取案例</div>';
     try {
       const response = await fetch(`${archiveApiBase}/api/history/archive?${params}`, {headers:{Accept:'application/json'}});
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const payload = await response.json();
-      const type = catalog?.data.types.find(item => item.injury_type === injury);
-      renderRecords(payload.results || [], query ? `“${query}”的伤病档案` : (type?.injury_label || injury), (payload.results || []).length === 50);
+      if (type) renderChart(type, payload.distribution || [], payload.stats);
+      else hideChart();
+      renderRecords(payload.results || [], query ? `“${query}”的伤病档案` : type.injury_label, (payload.results || []).length === 50);
     } catch (_error) {
       recordRoot.innerHTML = '<div class="empty-state">案例记录暂时不可用</div>';
     }
@@ -121,19 +213,22 @@
     const button = event.target.closest('[data-region]');
     if (!button) return;
     selectedRegion = button.dataset.region;
-    selectedInjury = null;
+    selectedTypeId = null;
     renderRegions();
     renderTypes();
+    hideChart();
     document.querySelector('#archive-record-title').textContent = '案例记录';
     document.querySelector('#archive-record-count').textContent = '选择伤病类型';
     recordRoot.innerHTML = '<div class="empty-state">选择伤病类型查看案例</div>';
   });
   typeRoot.addEventListener('click', event => {
-    const button = event.target.closest('[data-injury]');
+    const button = event.target.closest('[data-type-id]');
     if (!button) return;
-    selectedInjury = button.dataset.injury;
+    selectedTypeId = button.dataset.typeId;
+    const type = catalog.data.types.find(item => item.type_id === selectedTypeId);
+    if (!type) return;
     renderTypes();
-    loadRecords({ injury: selectedInjury });
+    loadRecords({ type });
   });
   leagueSelect.addEventListener('change', () => {
     catalog = null;
@@ -144,8 +239,9 @@
     event.preventDefault();
     const query = searchInput.value.trim();
     if (query.length < 2) return;
-    selectedInjury = null;
+    selectedTypeId = null;
     if (catalog) renderTypes();
+    hideChart();
     loadRecords({ query });
   });
 
