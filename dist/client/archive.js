@@ -104,9 +104,48 @@
           <path d="${line}" class="wave-line"/>
           <line x1="${averageX}" y1="${top}" x2="${averageX}" y2="${baseline}" class="average-line"/>
           <text x="${Math.min(averageX + 7, width - 86)}" y="34" class="average-label">平均 ${number(average)} 天</text>
+          <g class="hover-guide" hidden>
+            <line x1="${left}" y1="${top}" x2="${left}" y2="${baseline}" class="hover-line"/>
+            <circle cx="${left}" cy="${baseline}" r="5" class="hover-point"/>
+            <g class="hover-tooltip">
+              <rect x="0" y="0" width="154" height="32" rx="6"/>
+              <text x="12" y="21">—</text>
+            </g>
+          </g>
+          <rect x="${left}" y="${top}" width="${plotWidth}" height="${baseline - top}" class="chart-hit-area"/>
         </svg>
         <figcaption><span>样本 ${number(stats.sample_size)} 例</span><span>中位数 ${number(median)} 天</span><span>最长 ${number(stats.maximum_days)} 天</span></figcaption>
       </figure>`;
+    const svg = chartRoot.querySelector('svg');
+    const hitArea = svg.querySelector('.chart-hit-area');
+    const guide = svg.querySelector('.hover-guide');
+    const guideLine = guide.querySelector('.hover-line');
+    const guidePoint = guide.querySelector('.hover-point');
+    const tooltip = guide.querySelector('.hover-tooltip');
+    const tooltipText = tooltip.querySelector('text');
+    const moveGuide = event => {
+      const bounds = svg.getBoundingClientRect();
+      const viewX = Math.min(width - right, Math.max(left, ((event.clientX - bounds.left) / bounds.width) * width));
+      const position = ((viewX - left) / plotWidth) * (binCount - 1);
+      const lowIndex = Math.floor(position);
+      const highIndex = Math.min(binCount - 1, Math.ceil(position));
+      const mix = position - lowIndex;
+      const pointY = points[lowIndex].y + (points[highIndex].y - points[lowIndex].y) * mix;
+      const binIndex = Math.min(binCount - 1, Math.max(0, Math.floor(((viewX - left) / plotWidth) * binCount)));
+      const rangeStart = Math.round((binIndex / binCount) * xMax);
+      const rangeEnd = Math.round(((binIndex + 1) / binCount) * xMax);
+      const rangeLabel = binIndex === binCount - 1 && observedMax > xMax ? `≥${rangeStart} 天` : `${rangeStart}–${rangeEnd} 天`;
+      guideLine.setAttribute('x1', viewX.toFixed(1));
+      guideLine.setAttribute('x2', viewX.toFixed(1));
+      guidePoint.setAttribute('cx', viewX.toFixed(1));
+      guidePoint.setAttribute('cy', pointY.toFixed(1));
+      tooltip.setAttribute('transform', `translate(${Math.min(width - right - 154, Math.max(left, viewX + (viewX > width - 210 ? -164 : 10)))}, ${top + 7})`);
+      tooltipText.textContent = `${rangeLabel} · ${number(bins[binIndex])} 例`;
+      guide.removeAttribute('hidden');
+    };
+    hitArea.addEventListener('pointerenter', moveGuide);
+    hitArea.addEventListener('pointermove', moveGuide);
+    hitArea.addEventListener('pointerleave', () => { guide.setAttribute('hidden', ''); });
     chartPanel.hidden = false;
   }
 
