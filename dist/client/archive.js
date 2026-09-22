@@ -53,11 +53,11 @@
       return;
     }
     const width = 900;
-    const height = 220;
+    const height = 238;
     const left = 48;
     const right = 24;
-    const top = 20;
-    const baseline = 174;
+    const top = 72;
+    const baseline = 190;
     const plotWidth = width - left - right;
     const binCount = 24;
     const observedMax = Number(stats.maximum_days || 0);
@@ -98,18 +98,14 @@
     const peakTagWidth = 126;
     const peakTagHeight = 28;
     const peakTagX = Math.min(width - right - peakTagWidth, Math.max(left + 6, points[peakIndex].x + 10));
-    let peakTagY = Math.max(top + 4, points[peakIndex].y - peakTagHeight - 10);
+    const peakTagY = 34;
     const averageLabelX = Math.min(averageX + 7, width - 86);
-    const overlapsAverageLabel = peakTagX < averageLabelX + 84
-      && peakTagX + peakTagWidth > averageLabelX - 3
-      && peakTagY < 40;
-    if (overlapsAverageLabel) peakTagY = Math.min(baseline - peakTagHeight - 4, points[peakIndex].y + 12);
     const median = percentile(distribution, .5);
     const ticks = [0, .25, .5, .75, 1].map(fraction => {
       const x = left + fraction * plotWidth;
       const value = Math.round(xMax * fraction);
       const label = fraction === 1 && observedMax > xMax ? `≥${value}天` : `${value}天`;
-      return `<line x1="${x}" y1="${top}" x2="${x}" y2="${baseline}" class="chart-grid"/><text x="${x}" y="204" text-anchor="middle">${label}</text>`;
+      return `<line x1="${x}" y1="${top}" x2="${x}" y2="${baseline}" class="chart-grid"/><text x="${x}" y="220" text-anchor="middle">${label}</text>`;
     }).join('');
     document.querySelector('#archive-chart-title').textContent = `${type.injury_label} · 缺阵天数分布`;
     document.querySelector('#archive-average').textContent = `平均 ${number(average)} 天`;
@@ -124,7 +120,7 @@
           <path d="${peakLine}" class="wave-peak-line"/>
           <circle cx="${points[peakIndex].x}" cy="${points[peakIndex].y}" r="5" class="wave-peak-point"/>
           <line x1="${averageX}" y1="${top}" x2="${averageX}" y2="${baseline}" class="average-line"/>
-          <text x="${averageLabelX}" y="34" class="average-label">平均 ${number(average)} 天</text>
+          <text x="${averageLabelX}" y="24" class="average-label">平均 ${number(average)} 天</text>
           <g class="peak-tag" transform="translate(${peakTagX} ${peakTagY})">
             <rect width="${peakTagWidth}" height="${peakTagHeight}" rx="6"/>
             <text x="10" y="19">高频 ${peakRangeStart}–${peakRangeEnd} 天</text>
