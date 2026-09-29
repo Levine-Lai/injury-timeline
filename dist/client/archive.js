@@ -53,11 +53,11 @@
       return;
     }
     const width = 900;
-    const height = 220;
+    const height = 286;
     const left = 48;
     const right = 24;
-    const top = 20;
-    const baseline = 174;
+    const top = 82;
+    const baseline = 238;
     const plotWidth = width - left - right;
     const binCount = 24;
     const observedMax = Number(stats.maximum_days || 0);
@@ -105,15 +105,15 @@
       && aY < bY + bHeight + 8 && aY + aHeight + 8 > bY
     );
     const averageTagX = clampTagX(averageX + 8, averageTagWidth);
-    const averageTagY = top + 4;
+    const averageTagY = 18;
     let peakTagX = clampTagX(points[peakIndex].x + 10, peakTagWidth);
-    let peakTagY = Math.min(baseline - peakTagHeight - 4, Math.max(top + 4, points[peakIndex].y - peakTagHeight - 10));
+    let peakTagY = 18;
     if (tagsOverlap(peakTagX, peakTagY, peakTagWidth, peakTagHeight, averageTagX, averageTagY, averageTagWidth, averageTagHeight)) {
       const leftCandidate = clampTagX(points[peakIndex].x - peakTagWidth - 10, peakTagWidth);
       if (!tagsOverlap(leftCandidate, peakTagY, peakTagWidth, peakTagHeight, averageTagX, averageTagY, averageTagWidth, averageTagHeight)) {
         peakTagX = leftCandidate;
       } else {
-        peakTagY = averageTagY + averageTagHeight + 10;
+        peakTagY = averageTagY + averageTagHeight + 8;
       }
     }
     const median = percentile(distribution, .5);
@@ -121,7 +121,7 @@
       const x = left + fraction * plotWidth;
       const value = Math.round(xMax * fraction);
       const label = fraction === 1 && observedMax > xMax ? `≥${value}天` : `${value}天`;
-      return `<line x1="${x}" y1="${top}" x2="${x}" y2="${baseline}" class="chart-grid"/><text x="${x}" y="204" text-anchor="middle">${label}</text>`;
+      return `<line x1="${x}" y1="${top}" x2="${x}" y2="${baseline}" class="chart-grid"/><text x="${x}" y="268" text-anchor="middle">${label}</text>`;
     }).join('');
     document.querySelector('#archive-chart-title').textContent = `${type.injury_label} · 缺阵天数分布`;
     document.querySelector('#archive-average').textContent = `平均 ${number(average)} 天`;
