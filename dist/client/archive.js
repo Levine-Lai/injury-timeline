@@ -30,6 +30,11 @@
     'Right Winger':'右边锋', 'Centre-Forward':'中锋', 'Second Striker':'影锋',
   };
   const leagueNames = {'Premier League':'英超', 'La Liga':'西甲', Bundesliga:'德甲', 'Serie A':'意甲', 'Ligue 1':'法甲'};
+  const researchedCases = new Map([
+    [15022, 15022], [6815, 15022],
+    [11001, 11001],
+    [3846, 3371], [3371, 3371],
+  ]);
 
   function hideChart() {
     chartPanel.hidden = true;
@@ -256,14 +261,17 @@
       recordRoot.innerHTML = '<div class="empty-state">没有匹配的已结束案例</div>';
       return;
     }
-    recordRoot.innerHTML = rows.map(row => `
-      <article class="archive-record">
+    recordRoot.innerHTML = rows.map(row => {
+      const caseId = researchedCases.get(Number(row.id));
+      const content = `
         <span class="archive-person"><strong>${escape(row.player_name)}</strong><small>${escape(row.season || '—')}</small></span>
         <span><strong>${escape(row.club || '—')}</strong><small>${escape(positionNames[row.player_position] || row.player_position || '位置未记录')}</small></span>
         <span><strong>${formatDate(row.date_from)} — ${formatDate(row.date_until)}</strong><small>${escape(row.injury_label || '伤病类型待审核')}</small></span>
         <span class="archive-days"><strong>${number(row.days_missed)} 天</strong><small>${row.games_missed == null ? '场次未记录' : `${number(row.games_missed)} 场`}</small></span>
-        <span>${escape(leagueNames[row.league] || row.league || '—')}</span>
-      </article>`).join('');
+        <span>${escape(leagueNames[row.league] || row.league || '—')}</span>`;
+      if (caseId) return `<a class="archive-record researched-record" href="./case.html?id=${caseId}" aria-label="查看${escape(row.player_name)}伤病档案">${content}</a>`;
+      return `<article class="archive-record">${content}</article>`;
+    }).join('');
   }
 
   async function loadCatalog() {
